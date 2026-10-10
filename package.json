@@ -1,0 +1,8 @@
+{
+  "name": "genetrace",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "puppeteer-core": "^25.13.0"
+  }
+}

@@ -1,0 +1,128 @@
+/* responsive.css - Mobile layout adaptation across viewports */
+
+@media (max-width: 1024px) {
+    :root {
+        --sidebar-width: 200px;
+        --right-panel-width: 250px;
+    }
+}
+
+@media (max-width: 768px) {
+    #app-container {
+        height: auto;
+        min-height: 100vh;
+        width: 100%;
+        overflow-x: hidden;
+    }
+    
+    #workspace {
+        flex-direction: column;
+        overflow: visible;
+    }
+    
+    #sidebar {
+        width: 100%;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        padding: 0.5rem;
+        flex-direction: row;
+        overflow-x: auto;
+        white-space: nowrap;
+        background-color: var(--bg-secondary);
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .nav-menu {
+        display: flex;
+        flex-direction: row;
+        gap: 0.4rem;
+        width: max-content;
+    }
+    
+    .nav-menu li {
+        padding: 0.5rem 0.8rem;
+        font-size: 0.85rem;
+        border-radius: var(--radius-md);
+        white-space: nowrap;
+    }
+    
+    .nav-menu li.active {
+        border-right: none;
+        border-bottom: 2px solid var(--accent-primary);
+        background-color: var(--accent-light);
+    }
+    
+    .nav-menu li.section-title {
+        display: none;
+    }
+    
+    #main-content {
+        padding: 1rem;
+        overflow: visible;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    #right-panel {
+        width: 100%;
+        height: auto;
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+    }
+    
+    #top-bar {
+        padding: 0.5rem 1rem;
+        flex-wrap: wrap;
+        height: auto;
+        gap: 0.5rem;
+    }
+    
+    #top-bar .project-info {
+        display: none;
+    }
+    
+    .hero h2 {
+        font-size: 1.75rem;
+    }
+    
+    .input-actions {
+        flex-direction: column;
+    }
+    
+    .input-actions button {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    #top-bar {
+        padding: 0.5rem;
+    }
+    
+    #top-bar .brand h1 {
+        font-size: 1.1rem;
+    }
+    
+    .mode-toggle button {
+        padding: 0.3rem 0.5rem;
+        font-size: 0.75rem;
+    }
+    
+    .hero h2 {
+        font-size: 1.4rem;
+    }
+    
+    .hero p {
+        font-size: 0.95rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .card {
+        padding: 1rem;
+    }
+    
+    .data-table, .report-table {
+        font-size: 0.78rem;
+    }
+}

@@ -1,0 +1,67 @@
+[
+    {
+        "name": "EcoRI",
+        "sequence": "GAATTC",
+        "cut": 1
+    },
+    {
+        "name": "BamHI",
+        "sequence": "GGATCC",
+        "cut": 1
+    },
+    {
+        "name": "HindIII",
+        "sequence": "AAGCTT",
+        "cut": 1
+    },
+    {
+        "name": "NotI",
+        "sequence": "GCGGCCGC",
+        "cut": 2
+    },
+    {
+        "name": "XhoI",
+        "sequence": "CTCGAG",
+        "cut": 1
+    },
+    {
+        "name": "SmaI",
+        "sequence": "CCCGGG",
+        "cut": 3
+    },
+    {
+        "name": "PstI",
+        "sequence": "CTGCAG",
+        "cut": 5
+    },
+    {
+        "name": "NcoI",
+        "sequence": "CCATGG",
+        "cut": 1
+    },
+    {
+        "name": "AluI",
+        "sequence": "AGCT",
+        "cut": 2
+    },
+    {
+        "name": "HaeIII",
+        "sequence": "GGCC",
+        "cut": 2
+    },
+    {
+        "name": "DpnI",
+        "sequence": "GATC",
+        "cut": 2
+    },
+    {
+        "name": "TaqI",
+        "sequence": "TCGA",
+        "cut": 1
+    },
+    {
+        "name": "RsaI",
+        "sequence": "GTAC",
+        "cut": 2
+    }
+]

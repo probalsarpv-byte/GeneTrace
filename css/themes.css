@@ -1,0 +1,41 @@
+/* themes.css - Light/Dark mode and Student/Research mode styles */
+
+body.theme-dark {
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-tertiary: #334155;
+    
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #64748b;
+    
+    --border-color: #334155;
+    
+    --accent-light: #1e3a8a;
+    
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+}
+
+/* Student Mode Specific Overrides */
+body.mode-student {
+    /* Slightly warmer, more approachable accent for student mode */
+    --accent-primary: #0ea5e9;
+    --accent-hover: #0284c7;
+}
+
+body.mode-student .workflow-visual {
+    background: var(--bg-tertiary);
+    padding: 1rem;
+    border-radius: var(--radius-lg);
+    border: 2px dashed var(--accent-primary);
+}
+
+/* Helper classes for toggling visibility based on mode */
+body.mode-research .student-only {
+    display: none !important;
+}
+
+body.mode-student .research-only {
+    display: none !important;
+}
