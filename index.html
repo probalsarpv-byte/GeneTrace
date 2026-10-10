@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GeneTrace — Molecular Identification & Sequence Analysis Workbench</title>
-    <meta name="description" content="From Sequence to Biological Meaning - A production-ready scientific web application for sequence analysis.">
+    <title>GeneTrace v1.1 — Molecular Identification & Bioinformatics Workbench</title>
+    <meta name="description" content="From Sequence to Biological Meaning - A production-ready scientific web application for sequence analysis, raw chromatogram inspection, molecular identification, and 3D organism visualization.">
     <link rel="stylesheet" href="css/core.css">
     <link rel="stylesheet" href="css/workspace.css">
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/themes.css">
     <link rel="stylesheet" href="css/responsive.css">
+    <link rel="stylesheet" href="css/premium.css">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/svg+xml" href="assets/icon-192.svg">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
@@ -20,7 +21,7 @@
         <header id="top-bar">
             <div class="brand">
                 <span class="logo-icon">🧬</span>
-                <h1>GeneTrace</h1>
+                <h1>GeneTrace <span class="badge badge-pro" style="font-size:0.7rem; vertical-align:middle; margin-left:4px;">v1.1</span></h1>
             </div>
             <div class="project-info">
                 <span id="current-project" style="cursor:pointer;" title="View Projects">Default Project</span>
@@ -33,8 +34,10 @@
                     <button id="btn-mode-research" class="active">Research Mode</button>
                 </div>
                 <button id="btn-theme-toggle" title="Toggle Dark/Light Theme">🌓</button>
-                <button id="btn-export" class="primary">Export Report</button>
-                <button id="btn-settings" title="Settings">⚙️</button>
+                <div id="plan-badge" class="plan-badge free" title="Current Plan Tier">FREE</div>
+                <div id="account-btn" class="account-btn" title="User Account Profile">👤</div>
+                <button id="btn-export" class="btn primary">Export Report</button>
+                <button id="btn-settings" class="btn ghost" title="Settings">⚙️</button>
             </div>
         </header>
 
@@ -42,64 +45,108 @@
             <!-- Left Sidebar Navigation -->
             <nav id="sidebar">
                 <ul class="nav-menu">
-                    <li data-view="home" class="active">
-                        <span class="icon">🏠</span> Home
+                    <li data-view="home" class="nav-item active">
+                        <span class="icon">🏠</span> <span>Home</span>
                     </li>
-                    <li class="section-title">Analyze</li>
-                    <li data-view="analyze-identify">
-                        <span class="icon">🔍</span> Identify
+
+                    <li class="nav-section-title">Raw Sequence Lab</li>
+                    <li data-view="raw-lab" class="nav-item">
+                        <span class="icon">🔬</span> <span>Raw Lab (AB1/FASTQ)</span>
+                        <span class="nav-badge pro">PRO</span>
                     </li>
-                    <li data-view="analyze-nucleotide">
-                        <span class="icon">🧬</span> Nucleotide
+
+                    <li class="nav-section-title">Identification</li>
+                    <li data-view="analyze-identify" class="nav-item">
+                        <span class="icon">🧭</span> <span>Smart Router</span>
                     </li>
-                    <li data-view="analyze-protein">
-                        <span class="icon">🧪</span> Protein
+                    <li data-view="id-16s" class="nav-item">
+                        <span class="icon">🦠</span> <span>16S rRNA Bacterial</span>
+                        <span class="nav-badge pro">PRO</span>
                     </li>
-                    <li data-view="tools-batch">
-                        <span class="icon">📂</span> Batch Analysis
+                    <li data-view="id-its" class="nav-item">
+                        <span class="icon">🍄</span> <span>ITS Fungal Marker</span>
+                        <span class="nav-badge pro">PRO</span>
                     </li>
-                    <li class="section-title">Tools</li>
-                    <li data-view="tools-motif">
-                        <span class="icon">🔎</span> Motif Finder
+                    <li data-view="id-18s" class="nav-item">
+                        <span class="icon">🔬</span> <span>18S Eukaryotic</span>
+                        <span class="nav-badge pro">PRO</span>
                     </li>
-                    <li data-view="tools-mutation">
-                        <span class="icon">🧬</span> Mutation Explorer
+                    <li data-view="id-virus" class="nav-item">
+                        <span class="icon">☣️</span> <span>Virus Sequence</span>
+                        <span class="nav-badge pro">PRO</span>
                     </li>
-                    <li data-view="tools-primer">
-                        <span class="icon">📐</span> Primer Utilities
+                    <li data-view="id-unknown" class="nav-item">
+                        <span class="icon">❓</span> <span>Unknown Pipeline</span>
                     </li>
-                    <li data-view="tools-restriction">
-                        <span class="icon">✂️</span> Restriction Map
+
+                    <li class="nav-section-title">Core Analysis</li>
+                    <li data-view="analyze-nucleotide" class="nav-item">
+                        <span class="icon">🧬</span> <span>Nucleotide</span>
                     </li>
-                    <li data-view="tools-translation">
-                        <span class="icon">🔤</span> Translation (6-Frame)
+                    <li data-view="analyze-protein" class="nav-item">
+                        <span class="icon">🧪</span> <span>Protein</span>
                     </li>
-                    <li data-view="tools-compare">
-                        <span class="icon">⚖️</span> Sequence Compare
+
+                    <li class="nav-section-title">Tools & Calculators</li>
+                    <li data-view="tools-batch" class="nav-item">
+                        <span class="icon">📂</span> <span>Batch Analysis</span>
+                        <span class="nav-badge pro">PRO</span>
                     </li>
-                    <li class="section-title">Phylogeny</li>
-                    <li data-view="phylogeny-alignment">
-                        <span class="icon">📏</span> Alignment
+                    <li data-view="tools-motif" class="nav-item">
+                        <span class="icon">🔎</span> <span>Motif Finder</span>
                     </li>
-                    <li data-view="phylogeny-tree">
-                        <span class="icon">🌳</span> Tree Viewer
+                    <li data-view="tools-mutation" class="nav-item">
+                        <span class="icon">🧬</span> <span>Mutation Explorer</span>
                     </li>
-                    <li class="section-title">Learn</li>
-                    <li data-view="learn-modules">
-                        <span class="icon">📚</span> Educational Modules
+                    <li data-view="tools-primer" class="nav-item">
+                        <span class="icon">📐</span> <span>Primer Utilities</span>
                     </li>
-                    <li data-view="learn-challenges">
-                        <span class="icon">🎯</span> Challenges
+                    <li data-view="tools-restriction" class="nav-item">
+                        <span class="icon">✂️</span> <span>Restriction Map</span>
                     </li>
-                    <li class="section-title">Workspace</li>
-                    <li data-view="projects">
-                        <span class="icon">📁</span> Projects
+                    <li data-view="tools-translation" class="nav-item">
+                        <span class="icon">🔤</span> <span>Translation (6-Frame)</span>
                     </li>
-                    <li data-view="reports">
-                        <span class="icon">📊</span> Reports
+                    <li data-view="tools-compare" class="nav-item">
+                        <span class="icon">⚖️</span> <span>Sequence Compare</span>
                     </li>
-                    <li data-view="settings">
-                        <span class="icon">⚙️</span> Settings
+
+                    <li class="nav-section-title">Visualization & Phylogeny</li>
+                    <li data-view="vis-3d" class="nav-item">
+                        <span class="icon">🌐</span> <span>3D Organism & Taxonomy</span>
+                        <span class="nav-badge pro">PRO</span>
+                    </li>
+                    <li data-view="phylogeny-alignment" class="nav-item">
+                        <span class="icon">📏</span> <span>Alignment</span>
+                    </li>
+                    <li data-view="phylogeny-tree" class="nav-item">
+                        <span class="icon">🌳</span> <span>Tree Viewer</span>
+                    </li>
+
+                    <li class="nav-section-title">Learn</li>
+                    <li data-view="learn-modules" class="nav-item">
+                        <span class="icon">📚</span> <span>Educational Modules</span>
+                    </li>
+                    <li data-view="learn-challenges" class="nav-item">
+                        <span class="icon">🎯</span> <span>Challenges</span>
+                    </li>
+
+                    <li class="nav-section-title">Workspace & Account</li>
+                    <li data-view="dashboard" class="nav-item">
+                        <span class="icon">👤</span> <span>User Dashboard</span>
+                    </li>
+                    <li data-view="admin" class="nav-item">
+                        <span class="icon">🛡️</span> <span>Admin Console</span>
+                        <span class="nav-badge admin">ADMIN</span>
+                    </li>
+                    <li data-view="projects" class="nav-item">
+                        <span class="icon">📁</span> <span>Projects</span>
+                    </li>
+                    <li data-view="reports" class="nav-item">
+                        <span class="icon">📊</span> <span>Reports</span>
+                    </li>
+                    <li data-view="settings" class="nav-item">
+                        <span class="icon">⚙️</span> <span>Settings</span>
                     </li>
                 </ul>
             </nav>
@@ -110,17 +157,17 @@
                 <div id="view-home" class="view-section active">
                     <section class="hero">
                         <h2>From Sequence to Biological Meaning</h2>
-                        <p>Upload an unknown biological sequence and investigate its identity, coding potential, function, taxonomy and evolutionary relationships.</p>
+                        <p>Upload an unknown biological sequence or raw Sanger/FASTQ read to investigate its identity, coding potential, structure, function, taxonomy, and evolutionary relationships.</p>
                         
-                        <div class="sequence-input-card">
+                        <div class="sequence-input-card card">
                             <div class="input-tabs">
                                 <button class="tab-btn active" data-tab="paste">Paste Sequence</button>
                                 <button class="tab-btn" data-tab="upload">Upload File</button>
                                 <button class="tab-btn" data-tab="example">Load Example</button>
                             </div>
-                            <div class="input-content">
+                            <div class="input-content" style="padding-top:1rem;">
                                 <div id="tab-content-paste" class="tab-pane active">
-                                    <textarea id="main-sequence-input" placeholder="Paste FASTA or plain sequence here (DNA, RNA, or Protein)..."></textarea>
+                                    <textarea id="main-sequence-input" placeholder="Paste FASTA or plain sequence here (DNA, RNA, or Protein)..." style="width:100%; height:140px; font-family:var(--font-mono);"></textarea>
                                 </div>
                                 <div id="tab-content-upload" class="tab-pane" style="display:none; padding:1.5rem; text-align:center; border:2px dashed var(--border-color); border-radius:var(--radius-md);">
                                     <input type="file" id="file-sequence-input" accept=".fasta,.fa,.fna,.txt,.seq" style="margin-bottom:1rem;">
@@ -129,26 +176,505 @@
                                 <div id="tab-content-example" class="tab-pane" style="display:none; padding:1rem;">
                                     <p style="margin-bottom:0.75rem; font-weight:500;">Select a biological test dataset:</p>
                                     <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
-                                        <button class="btn-example-seq secondary" data-example="dna-fasta">DNA FASTA (GFP)</button>
-                                        <button class="btn-example-seq secondary" data-example="dna-plain">Plain DNA (No header)</button>
-                                        <button class="btn-example-seq secondary" data-example="rna">RNA Sequence</button>
-                                        <button class="btn-example-seq secondary" data-example="protein">Protein FASTA (Hemoglobin)</button>
-                                        <button class="btn-example-seq secondary" data-example="ambiguous">Ambiguous DNA (IUPAC)</button>
-                                        <button class="btn-example-seq secondary" data-example="invalid">Invalid Input</button>
+                                        <button class="btn-example-seq btn secondary" data-example="dna-fasta">DNA FASTA (GFP)</button>
+                                        <button class="btn-example-seq btn secondary" data-example="dna-plain">Plain DNA (No header)</button>
+                                        <button class="btn-example-seq btn secondary" data-example="rna">RNA Sequence</button>
+                                        <button class="btn-example-seq btn secondary" data-example="protein">Protein FASTA (Hemoglobin)</button>
+                                        <button class="btn-example-seq btn secondary" data-example="ambiguous">Ambiguous DNA (IUPAC)</button>
+                                        <button class="btn-example-seq btn secondary" data-example="invalid">Invalid Input</button>
                                     </div>
                                 </div>
                                 
-                                <div class="input-actions" style="margin-top:1rem;">
-                                    <button id="btn-analyze-sequence" class="primary large">ANALYZE SEQUENCE</button>
-                                    <button id="btn-identify-sequence" class="secondary large">IDENTIFY UNKNOWN SEQUENCE</button>
+                                <div class="input-actions" style="margin-top:1rem; display:flex; gap:1rem; flex-wrap:wrap;">
+                                    <button id="btn-analyze-sequence" class="btn primary large">ANALYZE SEQUENCE</button>
+                                    <button id="btn-identify-sequence" class="btn secondary large">SMART IDENTIFICATION</button>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="workflow-visual">
+                        <!-- Smart Router Quick Banner -->
+                        <div id="home-router-banner" class="card" style="display:none; margin-top:1.5rem; border-left:4px solid var(--accent-primary); background:var(--accent-light);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                                <div>
+                                    <h4 style="margin:0; color:var(--accent-primary); display:flex; align-items:center; gap:0.5rem;">
+                                        <span>🧭 Smart Recommendation:</span>
+                                        <span id="home-router-title" style="font-weight:700;">16S rRNA Identification</span>
+                                    </h4>
+                                    <p id="home-router-reason" style="margin:0.25rem 0 0 0; font-size:0.9rem; color:var(--text-secondary);">Sequence properties match bacterial 16S amplicon.</p>
+                                </div>
+                                <button id="btn-jump-recommended" class="btn primary small">Launch Workflow ➔</button>
+                            </div>
+                        </div>
+
+                        <div class="workflow-visual" style="margin-top:2rem; text-align:center; color:var(--text-muted); font-size:0.95rem;">
                             <span>Sequence</span> ➡️ <span>Gene</span> ➡️ <span>Protein</span> ➡️ <span>Function</span> ➡️ <span>Organism</span> ➡️ <span>Evolution</span>
                         </div>
                     </section>
+                </div>
+
+                <!-- Raw Sequence Lab View -->
+                <div id="view-raw-lab" class="view-section">
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                            <div>
+                                <h2>🔬 Raw Sequence Lab</h2>
+                                <p style="color:var(--text-secondary); margin-top:0.25rem;">Inspect raw Sanger sequencing chromatograms (AB1/ABI) and Next-Generation Sequencing quality reads (FASTQ).</p>
+                            </div>
+                            <span class="badge badge-pro">STUDENT PRO & RESEARCH</span>
+                        </div>
+
+                        <div class="input-tabs" style="margin-top:1.5rem;">
+                            <button class="tab-btn active" id="tab-btn-ab1" data-rawtab="ab1">Sanger Chromatogram (AB1)</button>
+                            <button class="tab-btn" id="tab-btn-fastq" data-rawtab="fastq">FASTQ Quality & Filtering</button>
+                            <button class="tab-btn" id="tab-btn-conv" data-rawtab="conv">Format Converter</button>
+                        </div>
+
+                        <!-- AB1 Section -->
+                        <div id="rawtab-ab1-content" style="margin-top:1.5rem;">
+                            <div style="background:var(--bg-secondary); padding:1.25rem; border-radius:var(--radius-lg); border:1px solid var(--border-color); margin-bottom:1.5rem;">
+                                <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+                                    <label style="font-weight:600;">Load AB1 Binary Trace File:</label>
+                                    <input type="file" id="ab1-file-input" accept=".ab1,.abi" style="font-size:0.9rem;">
+                                    <button id="btn-load-demo-ab1" class="btn secondary small">Load Synthetic AB1 Demo</button>
+                                </div>
+                                <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.5rem; margin-bottom:0;">
+                                    Real client-side ABIF binary parser extracts 4-channel traces (DATA.9–12), base calls (PBAS), Phred quality scores (PCON), and peak positions (PLOC).
+                                </p>
+                            </div>
+
+                            <div id="ab1-qc-panel" class="card" style="background:var(--bg-secondary); margin-bottom:1.5rem; display:none;"></div>
+
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                                <div style="display:flex; gap:0.5rem; align-items:center;">
+                                    <span style="font-weight:600; font-size:0.9rem;">Trace Channels:</span>
+                                    <span class="badge" style="background:#dcfce7; color:#166534; font-weight:bold;">A (Green)</span>
+                                    <span class="badge" style="background:#dbeafe; color:#1e40af; font-weight:bold;">C (Blue)</span>
+                                    <span class="badge" style="background:#f1f5f9; color:#0f172a; font-weight:bold;">G (Black)</span>
+                                    <span class="badge" style="background:#fee2e2; color:#991b1b; font-weight:bold;">T (Red)</span>
+                                </div>
+                                <div style="display:flex; gap:0.5rem;">
+                                    <button id="ab1-auto-trim" class="btn secondary small">⚡ Auto-Trim Poor Ends</button>
+                                    <button id="ab1-send-analysis" class="btn primary small">🚀 Send Trimmed to Analysis</button>
+                                </div>
+                            </div>
+
+                            <div id="chromatogram-container" style="min-height:260px; background:#ffffff; border:1px solid var(--border-color); border-radius:var(--radius-lg); overflow-x:auto; padding:10px;">
+                                <div style="padding:3rem; text-align:center; color:var(--text-muted);">
+                                    Load an .ab1 file or click "Load Synthetic AB1 Demo" to visualize Sanger chromatogram peaks with Phred quality bars.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- FASTQ Section -->
+                        <div id="rawtab-fastq-content" style="display:none; margin-top:1.5rem;">
+                            <div style="background:var(--bg-secondary); padding:1.25rem; border-radius:var(--radius-lg); border:1px solid var(--border-color); margin-bottom:1.5rem;">
+                                <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+                                    <label style="font-weight:600;">Load FASTQ Reads (.fastq, .fq):</label>
+                                    <input type="file" id="fastq-file-input" accept=".fastq,.fq,.txt" style="font-size:0.9rem;">
+                                    <button id="btn-load-demo-fastq" class="btn secondary small">Load Synthetic FASTQ Demo</button>
+                                </div>
+                                <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.5rem; margin-bottom:0;">
+                                    Parses 4-line FASTQ records, decodes Phred+33 ASCII scores, calculates Q-distributions, and performs quality/length filtering client-side.
+                                </p>
+                            </div>
+
+                            <div id="fastq-qc-charts" style="margin-bottom:1.5rem;">
+                                <div style="padding:3rem; text-align:center; color:var(--text-muted); border:1px dashed var(--border-color); border-radius:var(--radius-lg);">
+                                    No FASTQ data loaded. Select a .fastq file or load the demo dataset.
+                                </div>
+                            </div>
+
+                            <div class="card" style="background:var(--bg-secondary);">
+                                <h4>FASTQ Quality Filter & Trimming</h4>
+                                <div style="display:flex; gap:1.5rem; flex-wrap:wrap; margin-top:1rem; align-items:center;">
+                                    <div>
+                                        <label style="font-size:0.85rem; font-weight:600; display:block;">Min Mean Quality (Q):</label>
+                                        <input type="number" id="fastq-min-q" value="20" min="0" max="40" class="input-text" style="width:80px;">
+                                    </div>
+                                    <div>
+                                        <label style="font-size:0.85rem; font-weight:600; display:block;">Min Read Length (bp):</label>
+                                        <input type="number" id="fastq-min-len" value="50" min="20" max="500" class="input-text" style="width:90px;">
+                                    </div>
+                                    <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+                                        <button id="fastq-filter-btn" class="btn primary">Apply Quality Filter</button>
+                                        <button id="fastq-export-fasta" class="btn secondary">Export Filtered FASTA</button>
+                                        <button id="fastq-use-first" class="btn secondary">Analyze Read #1</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Converter Section -->
+                        <div id="rawtab-conv-content" style="display:none; margin-top:1.5rem;">
+                            <div class="card" style="background:var(--bg-secondary);">
+                                <h4>Sequence Format Utilities</h4>
+                                <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">Convert multi-line FASTA, clean whitespace, strip headers, or format to wrapped output.</p>
+                                <textarea id="conv-input" placeholder="Paste FASTA or raw sequence here..." style="width:100%; height:120px; font-family:var(--font-mono); margin-bottom:1rem;"></textarea>
+                                <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem;">
+                                    <button id="btn-conv-strip" class="btn secondary">Extract Plain Sequence</button>
+                                    <button id="btn-conv-wrap60" class="btn secondary">Wrap FASTA (60 bp)</button>
+                                    <button id="btn-conv-revcomp" class="btn secondary">Quick RevComp</button>
+                                </div>
+                                <textarea id="conv-output" readonly placeholder="Output will appear here..." style="width:100%; height:120px; font-family:var(--font-mono); background:var(--bg-tertiary);"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Smart Router View -->
+                <div id="view-analyze-identify" class="view-section">
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                            <div>
+                                <h2>🧭 Smart Workflow Router</h2>
+                                <p style="color:var(--text-secondary); margin-top:0.25rem;">Scientifically analyzes sequence length, GC composition, ORF density, and primer motifs to recommend the optimal molecular identification pathway.</p>
+                            </div>
+                            <button id="btn-router-reanalyze" class="btn secondary">Evaluate Active Sequence</button>
+                        </div>
+
+                        <div id="router-recommendation-container" style="margin-top:1.5rem;">
+                            <div style="padding:2rem; border:1px dashed var(--border-color); text-align:center; border-radius:var(--radius-lg);">
+                                <p style="color:var(--text-muted);">Please load an active sequence in the Home tab to receive tailored workflow recommendations.</p>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:2rem;">
+                            <h3>Available Molecular Identification Pipelines</h3>
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; margin-top:1rem;">
+                                <div class="card" style="margin:0; border:1px solid var(--border-color);">
+                                    <h4>🦠 16S rRNA Bacterial Pipeline</h4>
+                                    <p style="font-size:0.85rem; color:var(--text-secondary);">Gold standard for bacterial taxonomy. Evaluates amplicons against EzBioCloud 99% species / 98.7% genus thresholds and prepares SILVA/NCBI queries.</p>
+                                    <button class="btn primary small" data-view-target="id-16s" style="margin-top:0.5rem;">Open 16S Pipeline</button>
+                                </div>
+                                <div class="card" style="margin:0; border:1px solid var(--border-color);">
+                                    <h4>🍄 ITS Fungal Identification</h4>
+                                    <p style="font-size:0.85rem; color:var(--text-secondary);">Primary fungal barcoding marker (ITS1-5.8S-ITS2). Prepares NCBI ITS RefSeq and MycoBank searches with conservative confidence assessment.</p>
+                                    <button class="btn primary small" data-view-target="id-its" style="margin-top:0.5rem;">Open ITS Pipeline</button>
+                                </div>
+                                <div class="card" style="margin:0; border:1px solid var(--border-color);">
+                                    <h4>🔬 18S Eukaryotic Pipeline</h4>
+                                    <p style="font-size:0.85rem; color:var(--text-secondary);">Taxonomic marker for microeukaryotes, protozoa, and microalgae. Connects to 18S RefSeq databases with genus-level resolution caveats.</p>
+                                    <button class="btn primary small" data-view-target="id-18s" style="margin-top:0.5rem;">Open 18S Pipeline</button>
+                                </div>
+                                <div class="card" style="margin:0; border:1px solid var(--border-color);">
+                                    <h4>☣️ Virus Sequence Analysis</h4>
+                                    <p style="font-size:0.85rem; color:var(--text-secondary);">Analyzes viral coding potential, GC profile, and prepares ViPR / GenBank searches with clear non-clinical educational disclaimers.</p>
+                                    <button class="btn primary small" data-view-target="id-virus" style="margin-top:0.5rem;">Open Virus Pipeline</button>
+                                </div>
+                                <div class="card" style="margin:0; border:1px solid var(--border-color);">
+                                    <h4>❓ Unknown Sequence Pipeline</h4>
+                                    <p style="font-size:0.85rem; color:var(--text-secondary);">5-stage investigative diagnostic workflow that separates empirical observation from biological inference for fully uncharacterized sequences.</p>
+                                    <button class="btn primary small" data-view-target="id-unknown" style="margin-top:0.5rem;">Open Unknown Pipeline</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 16S rRNA Identification View -->
+                <div id="view-id-16s" class="view-section">
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                            <div>
+                                <h2>🦠 16S rRNA Bacterial Identification</h2>
+                                <p style="color:var(--text-secondary); margin-top:0.25rem;">Taxonomic assignment based on 16S ribosomal RNA gene similarity using conservative scientific thresholds.</p>
+                            </div>
+                            <span class="badge badge-pro">STUDENT PRO & RESEARCH</span>
+                        </div>
+
+                        <div id="sixteen-s-suitability" class="card" style="background:var(--bg-secondary); margin-top:1.5rem;">
+                            <h4>Marker Suitability Assessment</h4>
+                            <p id="sixteen-s-suitability-text" style="color:var(--text-muted); font-size:0.9rem;">Load a sequence to evaluate 16S marker suitability.</p>
+                        </div>
+
+                        <div style="margin-top:1.5rem;">
+                            <h4>External Database Queries</h4>
+                            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">GeneTrace adheres to strict privacy: sequences never leave your browser unless you explicitly launch an external query.</p>
+                            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                                <button id="btn-16s-copy-fasta" class="btn secondary">📋 Copy FASTA to Clipboard</button>
+                                <button id="btn-16s-open-ncbi" class="btn primary">NCBI 16S BLASTn ↗</button>
+                                <a href="https://www.ezbiocloud.net/identify" target="_blank" rel="noopener" class="btn secondary">EzBioCloud 16S ↗</a>
+                                <a href="https://www.arb-silva.de/aligner/" target="_blank" rel="noopener" class="btn secondary">SILVA SINA Aligner ↗</a>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:2rem;">
+                            <h4>Candidate Evaluation & Polyphasic Verification</h4>
+                            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.75rem;">
+                                Enter BLAST/EzBioCloud top hit credentials below or load an example candidate to evaluate confidence.
+                            </p>
+                            <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+                                <button id="btn-16s-load-candidate-demo" class="btn secondary small">Load E. coli Candidate Demo</button>
+                            </div>
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1rem;">
+                                <div>
+                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Accession ID:</label>
+                                    <input type="text" id="input-16s-acc" placeholder="NR_024570.1" class="input-text" style="width:100%;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Matched Organism:</label>
+                                    <input type="text" id="input-16s-org" placeholder="Escherichia coli strain K-12" class="input-text" style="width:100%;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Percent Identity (%):</label>
+                                    <input type="number" id="input-16s-ident" placeholder="99.8" step="0.1" max="100" class="input-text" style="width:100%;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Query Coverage (%):</label>
+                                    <input type="number" id="input-16s-cov" placeholder="100" step="0.1" max="100" class="input-text" style="width:100%;">
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:0.75rem;">
+                                <button id="btn-16s-eval-candidate" class="btn primary">Assess Taxonomic Confidence</button>
+                                <button id="btn-16s-add-evidence" class="btn secondary">Add to Evidence Board</button>
+                            </div>
+                            <div id="sixteen-s-eval-result" style="margin-top:1.5rem;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ITS Fungal Identification View -->
+                <div id="view-id-its" class="view-section">
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                            <div>
+                                <h2>🍄 ITS Fungal Identification</h2>
+                                <p style="color:var(--text-secondary); margin-top:0.25rem;">Nuclear ribosomal Internal Transcribed Spacer (ITS1-5.8S-ITS2) molecular identification for fungi.</p>
+                            </div>
+                            <span class="badge badge-pro">STUDENT PRO & RESEARCH</span>
+                        </div>
+
+                        <div id="its-suitability" class="card" style="background:var(--bg-secondary); margin-top:1.5rem;">
+                            <h4>ITS Marker Suitability</h4>
+                            <p id="its-suitability-text" style="color:var(--text-muted); font-size:0.9rem;">Load a sequence to evaluate ITS fungal suitability.</p>
+                        </div>
+
+                        <div style="margin-top:1.5rem;">
+                            <h4>External Database Queries</h4>
+                            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                                <button id="btn-its-copy-fasta" class="btn secondary">📋 Copy FASTA</button>
+                                <button id="btn-its-open-ncbi" class="btn primary">NCBI ITS RefSeq Fungi BLAST ↗</button>
+                                <a href="https://www.mycobank.org/" target="_blank" rel="noopener" class="btn secondary">MycoBank Fungi Portal ↗</a>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:2rem;">
+                            <h4>Candidate Evaluation & Species Delimitation</h4>
+                            <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+                                <button id="btn-its-load-candidate-demo" class="btn secondary small">Load S. cerevisiae Demo</button>
+                            </div>
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1rem;">
+                                <div>
+                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Accession ID:</label>
+                                    <input type="text" id="input-its-acc" placeholder="NR_111007.1" class="input-text" style="width:100%;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Fungal Organism:</label>
+                                    <input type="text" id="input-its-org" placeholder="Saccharomyces cerevisiae" class="input-text" style="width:100%;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Identity (%):</label>
+                                    <input type="number" id="input-its-ident" placeholder="99.5" step="0.1" class="input-text" style="width:100%;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Coverage (%):</label>
+                                    <input type="number" id="input-its-cov" placeholder="98.0" step="0.1" class="input-text" style="width:100%;">
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:0.75rem;">
+                                <button id="btn-its-eval-candidate" class="btn primary">Assess Fungal Confidence</button>
+                                <button id="btn-its-add-evidence" class="btn secondary">Add to Evidence Board</button>
+                            </div>
+                            <div id="its-eval-result" style="margin-top:1.5rem;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 18S Eukaryotic Identification View -->
+                <div id="view-id-18s" class="view-section">
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                            <div>
+                                <h2>🔬 18S Eukaryotic Identification</h2>
+                                <p style="color:var(--text-secondary); margin-top:0.25rem;">Small subunit ribosomal RNA gene analysis for protozoa, microalgae, and microeukaryotes.</p>
+                            </div>
+                            <span class="badge badge-pro">STUDENT PRO & RESEARCH</span>
+                        </div>
+
+                        <div id="eighteen-s-suitability" class="card" style="background:var(--bg-secondary); margin-top:1.5rem;">
+                            <h4>18S Suitability Assessment</h4>
+                            <p id="eighteen-s-suitability-text" style="color:var(--text-muted); font-size:0.9rem;">Load a sequence to evaluate 18S eukaryotic suitability.</p>
+                        </div>
+
+                        <div style="margin-top:1.5rem;">
+                            <h4>External Database Queries</h4>
+                            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                                <button id="btn-18s-copy-fasta" class="btn secondary">📋 Copy FASTA</button>
+                                <button id="btn-18s-open-ncbi" class="btn primary">NCBI 18S RefSeq BLAST ↗</button>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:2rem;">
+                            <h4>Candidate Evaluation</h4>
+                            <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+                                <button id="btn-18s-load-demo" class="btn secondary small">Load Tetrahymena Demo</button>
+                            </div>
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1rem;">
+                                <div>
+                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Accession ID:</label>
+                                    <input type="text" id="input-18s-acc" placeholder="NR_044700.1" class="input-text" style="width:100%;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Matched Eukaryote:</label>
+                                    <input type="text" id="input-18s-org" placeholder="Tetrahymena thermophila" class="input-text" style="width:100%;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Identity (%):</label>
+                                    <input type="number" id="input-18s-ident" placeholder="99.2" step="0.1" class="input-text" style="width:100%;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Coverage (%):</label>
+                                    <input type="number" id="input-18s-cov" placeholder="97.5" step="0.1" class="input-text" style="width:100%;">
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:0.75rem;">
+                                <button id="btn-18s-eval" class="btn primary">Assess 18S Confidence</button>
+                                <button id="btn-18s-add-evidence" class="btn secondary">Add to Evidence Board</button>
+                            </div>
+                            <div id="eighteen-s-eval-result" style="margin-top:1.5rem;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Virus Sequence Analysis View -->
+                <div id="view-id-virus" class="view-section">
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                            <div>
+                                <h2>☣️ Virus Sequence Analysis</h2>
+                                <p style="color:var(--text-secondary); margin-top:0.25rem;">Viral genome and coding sequence investigation with conservative diagnostic disclaimers.</p>
+                            </div>
+                            <span class="badge badge-pro">STUDENT PRO & RESEARCH</span>
+                        </div>
+
+                        <div style="background:#fffbeb; border-left:4px solid #f59e0b; padding:0.75rem 1rem; border-radius:4px; font-size:0.85rem; color:#92400e; margin-top:1.5rem;">
+                            <strong>⚠️ Strictly Educational & Non-Clinical:</strong> GeneTrace is not certified for viral clinical diagnosis, pathogen detection in patients, or diagnostic surveillance. All viral identifications represent preliminary bioinformatic screening only.
+                        </div>
+
+                        <div id="virus-suitability" class="card" style="background:var(--bg-secondary); margin-top:1.5rem;">
+                            <h4>Viral Coding & Composition Profile</h4>
+                            <p id="virus-suitability-text" style="color:var(--text-muted); font-size:0.9rem;">Load a sequence to analyze viral profile.</p>
+                        </div>
+
+                        <div style="margin-top:1.5rem;">
+                            <h4>External Virus Databases</h4>
+                            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                                <button id="btn-virus-copy-fasta" class="btn secondary">📋 Copy FASTA</button>
+                                <button id="btn-virus-open-ncbi" class="btn primary">NCBI BLASTn (nr/nt) ↗</button>
+                                <a href="https://www.viprbrc.org/" target="_blank" rel="noopener" class="btn secondary">ViPR Virus Portal ↗</a>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:2rem;">
+                            <h4>Candidate Evaluation</h4>
+                            <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+                                <button id="btn-virus-load-demo" class="btn secondary small">Load Bacteriophage Lambda Demo</button>
+                            </div>
+                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1rem;">
+                                <div>
+                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Accession ID:</label>
+                                    <input type="text" id="input-virus-acc" placeholder="NC_001416.1" class="input-text" style="width:100%;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Viral Agent / Phage:</label>
+                                    <input type="text" id="input-virus-org" placeholder="Enterobacteria phage lambda" class="input-text" style="width:100%;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Identity (%):</label>
+                                    <input type="number" id="input-virus-ident" placeholder="96.5" step="0.1" class="input-text" style="width:100%;">
+                                </div>
+                                <div>
+                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Coverage (%):</label>
+                                    <input type="number" id="input-virus-cov" placeholder="92.0" step="0.1" class="input-text" style="width:100%;">
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:0.75rem;">
+                                <button id="btn-virus-eval" class="btn primary">Assess Viral Placement</button>
+                                <button id="btn-virus-add-evidence" class="btn secondary">Add to Evidence Board</button>
+                            </div>
+                            <div id="virus-eval-result" style="margin-top:1.5rem;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Unknown Sequence Investigation View -->
+                <div id="view-id-unknown" class="view-section">
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                            <div>
+                                <h2>❓ Unknown Sequence Investigative Pipeline</h2>
+                                <p style="color:var(--text-secondary); margin-top:0.25rem;">Multi-stage diagnostic pipeline for uncharacterized sequences. Separates empirical observations from biological hypotheses.</p>
+                            </div>
+                            <button id="btn-run-unknown-investigate" class="btn primary">Run Investigation</button>
+                        </div>
+
+                        <div id="unknown-pipeline-container" style="margin-top:1.5rem;">
+                            <div style="padding:2rem; border:1px dashed var(--border-color); text-align:center; border-radius:var(--radius-lg);">
+                                <p style="color:var(--text-muted);">Click "Run Investigation" on your active sequence to launch the 5-step diagnostic pipeline.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3D Organism & Taxonomy View -->
+                <div id="view-vis-3d" class="view-section">
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                            <div>
+                                <h2>🌐 3D Organism & Taxonomy Visualization</h2>
+                                <p style="color:var(--text-secondary); margin-top:0.25rem;">Interactive WebGL morphological models paired with hierarchical taxonomic lineage paths.</p>
+                            </div>
+                            <span class="badge badge-pro">STUDENT PRO & RESEARCH</span>
+                        </div>
+
+                        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(360px, 1fr)); gap:1.5rem; margin-top:1.5rem;">
+                            <!-- 3D Canvas Column -->
+                            <div class="card" style="margin:0; background:var(--bg-secondary);">
+                                <h4>WebGL Morphological Model</h4>
+                                <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin:1rem 0;">
+                                    <button class="btn-3d-model btn secondary small" data-type="bacterium">Bacterium</button>
+                                    <button class="btn-3d-model btn secondary small" data-type="gram-positive">Gram-Positive</button>
+                                    <button class="btn-3d-model btn secondary small" data-type="yeast">Yeast</button>
+                                    <button class="btn-3d-model btn secondary small" data-type="filamentous-fungus">Fungus</button>
+                                    <button class="btn-3d-model btn secondary small" data-type="protozoan">Protozoan</button>
+                                    <button class="btn-3d-model btn secondary small" data-type="bacteriophage">Phage</button>
+                                    <button class="btn-3d-model btn secondary small" data-type="ssRNA-virus">Virus</button>
+                                    <button class="btn-3d-model btn secondary small" data-type="unknown">DNA Helix</button>
+                                </div>
+                                <div id="organism-viewer-container" style="height:320px; background:#0f172a; border-radius:var(--radius-lg); position:relative; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+                                    <div style="color:#94a3b8; font-size:0.9rem;">Initializing 3D Viewport...</div>
+                                </div>
+                                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem; text-align:center;">
+                                    *Illustrative scientific visualization based on identified organism group. Drag to rotate model.
+                                </div>
+                            </div>
+
+                            <!-- Taxonomy Lineage Column -->
+                            <div class="card" style="margin:0; background:var(--bg-secondary);">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <h4>Hierarchical Taxonomy Path</h4>
+                                    <div style="display:flex; gap:0.25rem;">
+                                        <button class="btn-tax-preset btn secondary small" data-preset="ecoli">E. coli</button>
+                                        <button class="btn-tax-preset btn secondary small" data-preset="yeast">Yeast</button>
+                                        <button class="btn-tax-preset btn secondary small" data-preset="lambda">Phage</button>
+                                    </div>
+                                </div>
+                                <div id="taxonomy-path-container" style="margin-top:1rem; max-height:360px; overflow-y:auto; background:var(--bg-primary); padding:1rem; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+                                    <p style="color:var(--text-muted); font-size:0.85rem;">Select an organism preset or perform identification to build taxonomic lineage.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Nucleotide View -->
@@ -156,16 +682,16 @@
                     <div class="card">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <h2>Nucleotide Analysis</h2>
-                            <button id="btn-save-sample-nuc" class="secondary" title="Save this sequence to the active project">💾 Save to Project</button>
+                            <button id="btn-save-sample-nuc" class="btn secondary" title="Save this sequence to the active project">💾 Save to Project</button>
                         </div>
                         <div id="nuc-stats-container"></div>
                         <div id="nuc-sequence-viewer-container"></div>
-                        <div class="input-actions" style="margin-top: 1rem; flex-wrap:wrap;">
-                            <button id="btn-find-orfs" class="primary">Find ORFs</button>
-                            <button id="btn-reverse-complement" class="secondary">Reverse Complement</button>
-                            <button id="btn-jump-translation" class="secondary">Translation (6-Frame)</button>
-                            <button id="btn-jump-restriction" class="secondary">Restriction Digest</button>
-                            <button id="btn-nuc-blast" class="secondary">NCBI BLASTn ↗</button>
+                        <div class="input-actions" style="margin-top: 1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+                            <button id="btn-find-orfs" class="btn primary">Find ORFs</button>
+                            <button id="btn-reverse-complement" class="btn secondary">Reverse Complement</button>
+                            <button id="btn-jump-translation" class="btn secondary">Translation (6-Frame)</button>
+                            <button id="btn-jump-restriction" class="btn secondary">Restriction Digest</button>
+                            <button id="btn-nuc-blast" class="btn secondary">NCBI BLASTn ↗</button>
                         </div>
                         <div id="ncbi-blast-form-container-nuc"></div>
                         <div id="orf-results-container" style="margin-top: 2rem;"></div>
@@ -177,43 +703,35 @@
                     <div class="card">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <h2>Protein Analysis</h2>
-                            <button id="btn-save-sample-prot" class="secondary">💾 Save to Project</button>
+                            <button id="btn-save-sample-prot" class="btn secondary">💾 Save to Project</button>
                         </div>
                         <div id="prot-stats-container"></div>
                         <div id="prot-sequence-viewer-container"></div>
                         <div class="input-actions" style="margin-top: 1rem;">
-                            <button id="btn-prot-blast" class="secondary">NCBI BLASTp ↗</button>
+                            <button id="btn-prot-blast" class="btn secondary">NCBI BLASTp ↗</button>
                         </div>
                         <div id="ncbi-blast-form-container-prot"></div>
-                    </div>
-                </div>
-
-                <!-- Identify View -->
-                <div id="view-analyze-identify" class="view-section">
-                    <div class="card">
-                        <h2>Identify My Sequence</h2>
-                        <p>Evaluate marker potential, diagnostic nucleotide features, and launch molecular identification against reference databases.</p>
-                        <div id="identify-content-container" style="margin-top:1.5rem;">
-                            <div style="padding: 2rem; border: 1px dashed var(--border-color); text-align: center; border-radius: var(--radius-lg);">
-                                <p style="color: var(--text-muted);">Please load a sequence in the Home tab to begin identification.</p>
-                            </div>
-                        </div>
                     </div>
                 </div>
 
                 <!-- Batch Analysis -->
                 <div id="view-tools-batch" class="view-section">
                     <div class="card">
-                        <h2>Batch Multi-FASTA Analysis</h2>
-                        <p>Analyze multiple sequences from a Multi-FASTA file or paste multiple records below.</p>
-                        <div style="display:flex; gap:1rem; align-items:center; margin-bottom:1rem;">
-                            <button id="btn-load-sample-batch" class="secondary small">Load Example Multi-FASTA</button>
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                            <div>
+                                <h2>Batch Multi-FASTA Analysis</h2>
+                                <p style="color:var(--text-secondary); margin-top:0.25rem;">Analyze multiple biological sequences in parallel from a Multi-FASTA record.</p>
+                            </div>
+                            <span class="badge badge-pro">STUDENT PRO & RESEARCH</span>
+                        </div>
+                        <div style="display:flex; gap:1rem; align-items:center; margin:1rem 0; flex-wrap:wrap;">
+                            <button id="btn-load-sample-batch" class="btn secondary small">Load Example Multi-FASTA</button>
                             <input type="file" id="batch-file-input" accept=".fasta,.fa,.txt" style="font-size:0.9rem;">
                         </div>
                         <textarea id="batch-input" placeholder=">Seq1&#10;ATGCGATCGATC&#10;>Seq2&#10;ATGCCCGGGTAA&#10;>Seq3&#10;ATGAAGTTCTAA" style="width:100%; height:140px; font-family:var(--font-mono); margin-bottom:1rem;"></textarea>
                         <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap; margin-bottom:1rem;">
-                            <button id="btn-run-batch" class="primary">Run Batch Stats</button>
-                            <button id="btn-export-batch-csv" class="secondary" style="display:none;">Export CSV</button>
+                            <button id="btn-run-batch" class="btn primary">Run Batch Stats</button>
+                            <button id="btn-export-batch-csv" class="btn secondary" style="display:none;">Export CSV</button>
                             <input type="text" id="batch-filter" placeholder="Filter sequences by name..." style="display:none; padding:0.4rem 0.8rem; border:1px solid var(--border-color); border-radius:var(--radius-md);">
                         </div>
                         <div id="batch-results" style="margin-top:1rem; overflow-x: auto;"></div>
@@ -224,16 +742,16 @@
                 <div id="view-tools-motif" class="view-section">
                     <div class="card">
                         <h2>Motif Finder</h2>
-                        <p>Search for specific exact nucleotide, protein motifs, or regex patterns in the active sequence.</p>
-                        <div style="display:flex; gap:1rem; margin-bottom:1rem; flex-wrap:wrap;">
+                        <p style="color:var(--text-secondary); margin-top:0.25rem;">Search for specific exact nucleotide, protein motifs, or regex patterns in the active sequence.</p>
+                        <div style="display:flex; gap:1rem; margin:1rem 0; flex-wrap:wrap;">
                             <input type="text" id="motif-input" placeholder="e.g. ATG, TATA, or GAATTC" class="input-text" style="flex:1; min-width:200px;">
                             <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
                                 <input type="checkbox" id="motif-regex"> Use Regex
                             </label>
                         </div>
                         <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
-                            <button id="btn-find-motif" class="primary">Find Motif</button>
-                            <button id="btn-motif-use-current" class="secondary">Use Active Sequence</button>
+                            <button id="btn-find-motif" class="btn primary">Find Motif</button>
+                            <button id="btn-motif-use-current" class="btn secondary">Use Active Sequence</button>
                         </div>
                         <div id="motif-results" style="margin-top:1rem;"></div>
                     </div>
@@ -243,9 +761,9 @@
                 <div id="view-tools-mutation" class="view-section">
                     <div class="card">
                         <h2>Mutation Explorer</h2>
-                        <p>Compare aligned query and reference sequences with 1-based biological coordinates and codon consequences.</p>
-                        <div style="margin-bottom:1rem;">
-                            <button id="btn-load-mutation-example" class="secondary small">Load Example (Sub, Ins, Del)</button>
+                        <p style="color:var(--text-secondary); margin-top:0.25rem;">Compare aligned query and reference sequences with 1-based biological coordinates and codon consequences.</p>
+                        <div style="margin:1rem 0;">
+                            <button id="btn-load-mutation-example" class="btn secondary small">Load Example (Sub, Ins, Del)</button>
                         </div>
                         <div style="display:flex; flex-direction:column; gap:1rem; margin-bottom:1rem;">
                             <div>
@@ -257,7 +775,7 @@
                                 <textarea id="mutation-alt" placeholder="ATGCCGATC-ATC" style="width:100%; height:70px; font-family:var(--font-mono);"></textarea>
                             </div>
                         </div>
-                        <button id="btn-find-mutations" class="primary">Find Mutations</button>
+                        <button id="btn-find-mutations" class="btn primary">Find Mutations</button>
                         <div id="mutation-results" style="margin-top:1.5rem; overflow-x:auto;"></div>
                     </div>
                 </div>
@@ -266,10 +784,10 @@
                 <div id="view-tools-primer" class="view-section">
                     <div class="card">
                         <h2>Primer Utilities</h2>
-                        <p>Analyze primer oligonucleotides: length, GC%, melting temperature (Tm), and GC clamp.</p>
-                        <div style="display:flex; gap:1rem; margin-bottom:1rem; flex-wrap:wrap;">
+                        <p style="color:var(--text-secondary); margin-top:0.25rem;">Analyze primer oligonucleotides: length, GC%, melting temperature (Tm), and GC clamp.</p>
+                        <div style="display:flex; gap:1rem; margin:1rem 0; flex-wrap:wrap;">
                             <input type="text" id="primer-input" placeholder="Primer Sequence 5' to 3' (e.g. AGAGTTTGATCCTGGCTCAG)" class="input-text" style="flex:1; min-width:260px;">
-                            <button id="btn-analyze-primer" class="primary">Analyze Primer</button>
+                            <button id="btn-analyze-primer" class="btn primary">Analyze Primer</button>
                         </div>
                         <div id="primer-results" style="margin-top:1rem;"></div>
                     </div>
@@ -279,9 +797,9 @@
                 <div id="view-tools-restriction" class="view-section">
                     <div class="card">
                         <h2>Restriction Enzyme Map</h2>
-                        <p>Scan the nucleotide sequence for restriction enzyme recognition sites and calculate cut positions.</p>
-                        <div style="margin-bottom:1rem; display:flex; gap:1rem; flex-wrap:wrap;">
-                            <button id="btn-run-restriction" class="primary">Generate Restriction Map</button>
+                        <p style="color:var(--text-secondary); margin-top:0.25rem;">Scan the nucleotide sequence for restriction enzyme recognition sites and calculate cut positions.</p>
+                        <div style="margin:1rem 0; display:flex; gap:1rem; flex-wrap:wrap;">
+                            <button id="btn-run-restriction" class="btn primary">Generate Restriction Map</button>
                             <label style="display:flex; align-items:center; gap:0.5rem;">
                                 <input type="checkbox" id="chk-single-cutters"> Single-cutters only
                             </label>
@@ -294,9 +812,9 @@
                 <div id="view-tools-translation" class="view-section">
                     <div class="card">
                         <h2>Six-Frame Translation</h2>
-                        <p>Translate the current sequence across all three forward (+1, +2, +3) and reverse (-1, -2, -3) reading frames.</p>
-                        <div style="margin-bottom:1rem;">
-                            <button id="btn-run-translation" class="primary">Translate All 6 Frames</button>
+                        <p style="color:var(--text-secondary); margin-top:0.25rem;">Translate the current sequence across all three forward (+1, +2, +3) and reverse (-1, -2, -3) reading frames.</p>
+                        <div style="margin:1rem 0;">
+                            <button id="btn-run-translation" class="btn primary">Translate All 6 Frames</button>
                         </div>
                         <div id="translation-results" style="margin-top:1rem; overflow-x:auto;"></div>
                     </div>
@@ -306,8 +824,8 @@
                 <div id="view-tools-compare" class="view-section">
                     <div class="card">
                         <h2>Sequence Compare (Identity & Distance)</h2>
-                        <p>Calculate pairwise identity %, exact matches, mismatches, and gaps between two sequences.</p>
-                        <div style="display:flex; gap:1rem; margin-bottom:1rem; flex-wrap:wrap;">
+                        <p style="color:var(--text-secondary); margin-top:0.25rem;">Calculate pairwise identity %, exact matches, mismatches, and gaps between two sequences.</p>
+                        <div style="display:flex; gap:1rem; margin:1rem 0; flex-wrap:wrap;">
                             <div style="flex:1; min-width:250px;">
                                 <label style="display:block; font-weight:600; margin-bottom:0.25rem;">Sequence 1:</label>
                                 <textarea id="compare-1" placeholder="Paste Sequence 1..." style="width:100%; height:80px; font-family:var(--font-mono);"></textarea>
@@ -317,7 +835,7 @@
                                 <textarea id="compare-2" placeholder="Paste Sequence 2..." style="width:100%; height:80px; font-family:var(--font-mono);"></textarea>
                             </div>
                         </div>
-                        <button id="btn-compare-seqs" class="primary">Calculate Identity</button>
+                        <button id="btn-compare-seqs" class="btn primary">Calculate Identity</button>
                         <div id="compare-results" style="margin-top:1rem;"></div>
                     </div>
                 </div>
@@ -327,11 +845,11 @@
                     <div class="card">
                         <h2>Pairwise Sequence Alignment Viewer</h2>
                         <p class="text-muted">Compare a query sequence to a reference with nucleotide match coloring.</p>
-                        <div style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap:wrap;">
+                        <div style="display: flex; gap: 1rem; margin: 1rem 0; flex-wrap:wrap;">
                             <textarea id="align-query" placeholder="Query Sequence..." style="flex: 1; min-width:250px; height: 100px; font-family: var(--font-mono);"></textarea>
                             <textarea id="align-ref" placeholder="Reference Sequence..." style="flex: 1; min-width:250px; height: 100px; font-family: var(--font-mono);"></textarea>
                         </div>
-                        <button id="btn-run-alignment" class="primary">Align Sequences</button>
+                        <button id="btn-run-alignment" class="btn primary">Align Sequences</button>
                         <div id="alignment-results-container" style="margin-top: 1.5rem;"></div>
                     </div>
                 </div>
@@ -341,12 +859,12 @@
                     <div class="card">
                         <h2>Phylogenetic Tree Viewer</h2>
                         <p class="text-muted">Paste a Newick format string or select a biological tree preset.</p>
-                        <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem;">
-                            <button class="btn-newick-preset secondary small" data-tree="((Human:0.1,Chimp:0.2):0.3,Mouse:0.4);">Primates & Mouse</button>
-                            <button class="btn-newick-preset secondary small" data-tree="(((E_coli:0.2,Salmonella:0.25):0.4,Pseudomonas:0.6):0.5,Bacillus:0.9);">Bacteria</button>
+                        <div style="display:flex; gap:0.5rem; margin:1rem 0;">
+                            <button class="btn-newick-preset btn secondary small" data-tree="((Human:0.1,Chimp:0.2):0.3,Mouse:0.4);">Primates & Mouse</button>
+                            <button class="btn-newick-preset btn secondary small" data-tree="(((E_coli:0.2,Salmonella:0.25):0.4,Pseudomonas:0.6):0.5,Bacillus:0.9);">Bacteria</button>
                         </div>
                         <textarea id="newick-input" placeholder="e.g. ((Human:0.1,Chimp:0.2):0.3,Mouse:0.4);" style="width: 100%; height: 80px; margin-bottom: 1rem; font-family: var(--font-mono);"></textarea>
-                        <button id="btn-render-tree" class="primary">Render Tree</button>
+                        <button id="btn-render-tree" class="btn primary">Render Tree</button>
                         <div id="tree-viewer-container" style="margin-top: 1.5rem; background: var(--bg-tertiary); padding: 1rem; border-radius: var(--radius-md); min-height: 200px;"></div>
                     </div>
                 </div>
@@ -384,16 +902,38 @@
                             <div class="card" style="margin:0; background:var(--bg-secondary);">
                                 <h4>Challenge 1: Find the Hidden Coding Gene</h4>
                                 <p style="font-size:0.9rem; color:var(--text-secondary);">Given sequence: <code style="font-family:var(--font-mono);">TTTATGAAGCTATTTAGAATATAGCCC</code>. Identify the start codon and the stop codon.</p>
-                                <button class="btn-reveal-hint secondary small" style="margin-top:0.5rem;">Show Solution</button>
+                                <button class="btn-reveal-hint btn secondary small" style="margin-top:0.5rem;">Show Solution</button>
                                 <div class="challenge-solution" style="display:none; margin-top:0.5rem; font-size:0.9rem; color:var(--accent-primary);">Start: ATG at pos 4. Stop: TAG at pos 22. Encoded peptide: MKLFRI*</div>
                             </div>
                             <div class="card" style="margin:0; background:var(--bg-secondary);">
                                 <h4>Challenge 2: Silent vs Missense Mutation</h4>
                                 <p style="font-size:0.9rem; color:var(--text-secondary);">Compare Codon GAG (Glutamic acid) to GAA. What type of mutation is this?</p>
-                                <button class="btn-reveal-hint secondary small" style="margin-top:0.5rem;">Show Solution</button>
+                                <button class="btn-reveal-hint btn secondary small" style="margin-top:0.5rem;">Show Solution</button>
                                 <div class="challenge-solution" style="display:none; margin-top:0.5rem; font-size:0.9rem; color:var(--accent-primary);">Synonymous (Silent) mutation: both GAG and GAA translate to Glutamic Acid (E).</div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- User Dashboard View -->
+                <div id="view-dashboard" class="view-section">
+                    <div class="card">
+                        <h2>👤 User Dashboard & Subscription Tiers</h2>
+                        <div id="user-dashboard-container" style="margin-top:1.5rem;"></div>
+                    </div>
+                </div>
+
+                <!-- Admin Dashboard View -->
+                <div id="view-admin" class="view-section">
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                            <div>
+                                <h2>🛡️ GeneTrace Admin Management Console</h2>
+                                <p style="color:var(--text-secondary); margin-top:0.25rem;">Platform administration, feature flags, entitlements, usage analytics, and Firebase rules.</p>
+                            </div>
+                            <span class="badge badge-admin">ADMIN ONLY</span>
+                        </div>
+                        <div id="admin-dashboard-container" style="margin-top:1.5rem;"></div>
                     </div>
                 </div>
 
@@ -401,7 +941,7 @@
                 <div id="view-projects" class="view-section">
                     <div class="card">
                         <h2>Project Workspace & IndexedDB Persistence</h2>
-                        <p>Create workspaces, organize samples, and export/import projects across sessions.</p>
+                        <p style="color:var(--text-secondary); margin-top:0.25rem;">Create workspaces, organize samples, and export/import projects across sessions.</p>
                         
                         <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:1.5rem; margin-top:1.5rem;">
                             <div class="card" style="margin:0; background:var(--bg-secondary);">
@@ -409,7 +949,7 @@
                                 <div style="display:flex; flex-direction:column; gap:0.75rem; margin-top:1rem;">
                                     <input type="text" id="new-project-name" placeholder="Project Name (e.g. E. coli Investigation)" class="input-text">
                                     <input type="text" id="new-project-desc" placeholder="Description (optional)" class="input-text">
-                                    <button id="btn-create-project" class="primary">Create Project</button>
+                                    <button id="btn-create-project" class="btn primary">Create Project</button>
                                 </div>
                             </div>
 
@@ -417,7 +957,7 @@
                                 <h3>Project Backup & Transfer</h3>
                                 <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">Export the active project as JSON or restore a previously saved project file.</p>
                                 <div style="display:flex; flex-direction:column; gap:0.75rem;">
-                                    <button id="btn-export-project-json" class="secondary">Export Active Project (JSON)</button>
+                                    <button id="btn-export-project-json" class="btn secondary">Export Active Project (JSON)</button>
                                     <div>
                                         <label style="display:block; font-size:0.85rem; margin-bottom:0.25rem;">Import Project JSON:</label>
                                         <input type="file" id="input-import-project" accept=".json" style="font-size:0.85rem;">
@@ -442,10 +982,10 @@
                 <div id="view-reports" class="view-section">
                     <div class="card">
                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
-                            <h2>Analysis Report</h2>
+                            <h2>Scientific Analysis Report</h2>
                             <div style="display:flex; gap:0.5rem;">
-                                <button id="btn-print-report" class="primary">🖨️ Print / Save as PDF</button>
-                                <button id="btn-download-report-html" class="secondary">⬇️ Download HTML</button>
+                                <button id="btn-print-report" class="btn primary">🖨️ Print / Save as PDF</button>
+                                <button id="btn-download-report-html" class="btn secondary">⬇️ Download HTML</button>
                             </div>
                         </div>
                         <div id="report-live-container" style="margin-top:1.5rem; background:white; color:#0f172a; padding:1.5rem; border-radius:var(--radius-md); border:1px solid var(--border-color);">
@@ -462,14 +1002,14 @@
                             <div>
                                 <label style="display:block; font-weight:600; margin-bottom:0.5rem;">Target Audience Mode:</label>
                                 <div style="display:flex; gap:1rem;">
-                                    <button id="btn-settings-student" class="secondary">Student Mode</button>
-                                    <button id="btn-settings-research" class="primary">Research Mode</button>
+                                    <button id="btn-settings-student" class="btn secondary">Student Mode</button>
+                                    <button id="btn-settings-research" class="btn primary">Research Mode</button>
                                 </div>
                             </div>
 
                             <div>
                                 <label style="display:block; font-weight:600; margin-bottom:0.5rem;">Appearance Theme:</label>
-                                <button id="btn-settings-theme" class="secondary">Toggle Light/Dark Theme</button>
+                                <button id="btn-settings-theme" class="btn secondary">Toggle Light/Dark Theme</button>
                             </div>
 
                             <div>
@@ -479,7 +1019,7 @@
 
                             <div style="border-top:1px solid var(--border-color); padding-top:1.5rem;">
                                 <h3 style="font-size:1.05rem; margin-bottom:0.5rem;">About GeneTrace</h3>
-                                <p style="font-size:0.9rem; margin-bottom:0.25rem;"><strong>Version:</strong> GeneTrace v1.0.0 (Release Candidate)</p>
+                                <p style="font-size:0.9rem; margin-bottom:0.25rem;"><strong>Version:</strong> GeneTrace v1.1.0 (Production Release)</p>
                                 <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem;"><em>"From Sequence to Biological Meaning"</em></p>
                                 <div style="background:var(--bg-tertiary); padding:0.75rem; border-radius:var(--radius-md); font-size:0.85rem; margin-bottom:1rem;">
                                     <strong>🔒 Privacy & Telemetry Model:</strong><br>
@@ -487,29 +1027,73 @@
                                 </div>
                                 <div style="background:#fffbeb; border-left:4px solid #f59e0b; padding:0.75rem; border-radius:4px; font-size:0.8rem; color:#92400e; margin-bottom:1rem;">
                                     <strong>⚠️ Scientific Scope & Disclaimer:</strong><br>
-                                    GeneTrace is intended for education, research, and preliminary bioinformatics analysis. It is not designed or certified for clinical diagnosis, medical treatment, or regulatory filings.
+                                    GeneTrace is intended strictly for education, academic research, and preliminary bioinformatics screening. It is not designed or certified for clinical diagnosis, medical therapy, or regulatory submissions.
                                 </div>
                             </div>
 
                             <div style="border-top:1px solid var(--border-color); padding-top:1.5rem;">
                                 <h3 style="font-size:1.05rem; color:#ef4444; margin-bottom:0.5rem;">Reset Workspace Data</h3>
                                 <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">Clear all local IndexedDB cache, saved projects, and samples.</p>
-                                <button id="btn-clear-all-data" class="secondary" style="color:#ef4444; border-color:#ef4444;">Clear All Local Data</button>
+                                <button id="btn-clear-all-data" class="btn secondary" style="color:#ef4444; border-color:#ef4444;">Clear All Local Data</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </main>
 
-            <!-- Right Panel (Contextual / Evidence) -->
+            <!-- Right Panel (Contextual / Evidence Board) -->
             <aside id="right-panel">
-                <div class="panel-header">
+                <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center;">
                     <h3>Analysis Evidence</h3>
+                    <button id="btn-clear-evidence" class="btn ghost small" title="Clear Evidence Board" style="font-size:0.8rem;">Clear</button>
                 </div>
                 <div id="evidence-board" class="panel-content">
                     <p class="empty-state">Load a sequence to begin analysis.</p>
                 </div>
             </aside>
+        </div>
+    </div>
+
+    <!-- PRO Upgrade Gate Modal -->
+    <div id="premium-gate-modal" class="premium-modal-overlay">
+        <div class="premium-modal">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div>
+                    <span class="badge badge-pro">PRO FEATURE</span>
+                    <h3 id="premium-gate-title" style="margin-top:0.5rem; font-size:1.3rem;">Unlock Advanced Capabilities</h3>
+                </div>
+                <button id="btn-close-premium-modal" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted);">&times;</button>
+            </div>
+            <p id="premium-gate-desc" style="color:var(--text-secondary); font-size:0.95rem; margin:1rem 0;">
+                This feature requires a Student Pro or Research Pro plan.
+            </p>
+            <div class="plan-selector">
+                <div class="plan-card" id="card-plan-student">
+                    <h3>Student Pro</h3>
+                    <div class="price">$5<span style="font-size:0.9rem; font-weight:normal;">/mo</span></div>
+                    <ul style="text-align:left; font-size:0.85rem; padding-left:1.2rem; color:var(--text-secondary);">
+                        <li>Raw Sanger AB1 Chromatograms</li>
+                        <li>FASTQ Quality & Filtering</li>
+                        <li>16S & ITS & 18S Workflows</li>
+                        <li>3D Organism Visualization</li>
+                    </ul>
+                    <button class="btn primary small" id="btn-upgrade-student" style="margin-top:1rem; width:100%;">Select Student Pro</button>
+                </div>
+                <div class="plan-card active" id="card-plan-research">
+                    <h3>Research Pro</h3>
+                    <div class="price">$15<span style="font-size:0.9rem; font-weight:normal;">/mo</span></div>
+                    <ul style="text-align:left; font-size:0.85rem; padding-left:1.2rem; color:var(--text-secondary);">
+                        <li>Everything in Student Pro</li>
+                        <li>Batch Analysis (Unlimited)</li>
+                        <li>Advanced Phylogeny & Export</li>
+                        <li>Priority Compute & Storage</li>
+                    </ul>
+                    <button class="btn premium small" id="btn-upgrade-research" style="margin-top:1rem; width:100%;">Select Research Pro</button>
+                </div>
+            </div>
+            <div style="margin-top:1.5rem; text-align:center; font-size:0.8rem; color:var(--text-muted);">
+                *Self-hosted / open-source instances can toggle features or set plans via the Admin Console.
+            </div>
         </div>
     </div>
     

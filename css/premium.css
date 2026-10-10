@@ -1,0 +1,223 @@
+/* premium.css - GeneTrace Premium SaaS Features */
+
+/* Auth Overlay */
+#auth-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.auth-card {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  width: 100%;
+  max-width: 400px;
+  padding: var(--space-8);
+  border: 1px solid var(--border-color);
+}
+
+.auth-tabs {
+  display: flex;
+  margin-bottom: var(--space-6);
+  border-bottom: 2px solid var(--border-subtle);
+}
+
+.auth-tabs button {
+  flex: 1;
+  padding: var(--space-2);
+  text-align: center;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+}
+.auth-tabs button.active {
+  color: var(--accent-primary);
+  border-bottom-color: var(--accent-primary);
+}
+
+/* Plan Selectors */
+.plan-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+.plan-card {
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--easing);
+}
+.plan-card:hover { border-color: var(--accent-primary); background-color: var(--accent-light); }
+.plan-card.active { border-color: var(--accent-primary); box-shadow: var(--shadow-glow-blue); background-color: var(--accent-light); }
+.plan-card h3 { font-size: var(--text-lg); margin-bottom: var(--space-2); }
+.plan-card .price { font-size: var(--text-2xl); font-weight: 700; margin-bottom: var(--space-4); }
+
+/* Premium Modal */
+.premium-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-normal) var(--easing);
+}
+.premium-modal-overlay.active { opacity: 1; pointer-events: auto; }
+.premium-modal {
+  background-color: var(--bg-primary);
+  border-radius: var(--radius-xl);
+  width: 90%;
+  max-width: 600px;
+  overflow: hidden;
+  transform: translateY(20px);
+  transition: transform var(--duration-normal) var(--easing);
+}
+.premium-modal-overlay.active .premium-modal { transform: translateY(0); }
+.premium-header {
+  background: linear-gradient(135deg, #2563eb, #8b5cf6);
+  padding: var(--space-6);
+  color: white;
+  text-align: center;
+}
+
+/* Pro Lock */
+.pro-lock {
+  width: 14px;
+  height: 14px;
+  color: var(--warning);
+  margin-left: auto;
+}
+
+/* Admin Elements */
+.feature-manager-table { margin-top: var(--space-4); }
+.admin-stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-4); }
+.admin-user-table th, .admin-user-table td { font-size: var(--text-sm); }
+
+/* Chromatogram Viewer */
+#chromatogram-canvas-container {
+  width: 100%;
+  height: 200px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+}
+.chrom-controls { display: flex; gap: var(--space-2); padding: var(--space-2); background-color: var(--bg-tertiary); border-bottom: 1px solid var(--border-color); }
+.base-label { position: absolute; bottom: 0; font-family: var(--font-mono); font-size: 10px; text-align: center; }
+.quality-bar { position: absolute; bottom: 20px; width: 80%; left: 10%; background-color: rgba(0,0,0,0.1); }
+
+/* FASTQ Dashboard */
+.fastq-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+.qc-chart-container {
+  height: 150px;
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+/* 3D Viewer */
+#organism-viewer-container {
+  width: 100%;
+  height: 300px;
+  background-color: #000;
+  border-radius: var(--radius-lg);
+  position: relative;
+}
+.viewer-controls { position: absolute; top: 10px; right: 10px; display: flex; gap: 5px; }
+.viewer-disclaimer { position: absolute; bottom: 10px; left: 10px; color: rgba(255,255,255,0.5); font-size: 10px; }
+
+/* Taxonomy Path */
+.taxonomy-path { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.taxon-node { background-color: var(--bg-tertiary); padding: 2px 8px; border-radius: var(--radius-sm); font-size: var(--text-xs); }
+.taxon-connector { color: var(--text-muted); }
+
+/* Smart Router */
+.router-recommendation {
+  background: linear-gradient(to right, var(--bg-secondary), var(--accent-light));
+  border-left: 4px solid var(--accent-primary);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+}
+.workflow-chip {
+  display: inline-block;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--accent-primary);
+  color: var(--accent-primary);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: bold;
+}
+
+/* Loading States */
+.analysis-stage-indicator { display: flex; gap: var(--space-2); margin-top: var(--space-4); }
+.stage-step {
+  flex: 1;
+  height: 4px;
+  background-color: var(--bg-tertiary);
+  border-radius: var(--radius-full);
+}
+.stage-step.active { background-color: var(--accent-primary); animation: pulseGlow 1.5s infinite; }
+.stage-step.done { background-color: var(--success); }
+
+/* Animations */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 0 0 var(--accent-glow); }
+  70% { box-shadow: 0 0 0 6px rgba(37, 99, 235, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+}
+@keyframes traceReveal {
+  from { stroke-dashoffset: 1000; }
+  to { stroke-dashoffset: 0; }
+}
+
+.chromatogram-trace-svg {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: traceReveal 2s ease forwards;
+}
+
+/* Sequence Viewer Upgrade */
+.sequence-viewer-pro {
+  position: relative;
+  padding-top: 20px;
+}
+.sequence-ruler {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 15px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 8px;
+  color: var(--text-muted);
+}
+.codon-highlight { background-color: rgba(245, 158, 11, 0.2); }
+
+/* Dark Mode Premium Overrides */
+[data-theme='dark'] .auth-card { background-color: var(--bg-secondary); }
+[data-theme='dark'] .plan-card { background-color: var(--bg-tertiary); }
+[data-theme='dark'] #chromatogram-canvas-container { background-color: #0f172a; }

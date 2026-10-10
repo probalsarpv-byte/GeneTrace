@@ -1,128 +1,112 @@
-/* responsive.css - Mobile layout adaptation across viewports */
+/* responsive.css - Responsive Adjustments */
 
+/* 1440px+ (Large Screens) */
+@media (min-width: 1440px) {
+  #right-panel {
+    display: flex; /* Ensure right panel is visible */
+  }
+}
+
+/* 1200px (Medium-Large Screens) */
+@media (max-width: 1200px) {
+  #right-panel {
+    display: none; /* Hide right panel, widen main */
+  }
+  #main-content {
+    padding: var(--space-8); /* Add a bit more padding since we have space */
+  }
+}
+
+/* 1024px (Tablets Landscape) */
 @media (max-width: 1024px) {
-    :root {
-        --sidebar-width: 200px;
-        --right-panel-width: 250px;
-    }
+  :root {
+    --sidebar-w: 220px;
+  }
 }
 
+/* 768px (Tablets Portrait & Mobile) */
 @media (max-width: 768px) {
-    #app-container {
-        height: auto;
-        min-height: 100vh;
-        width: 100%;
-        overflow-x: hidden;
-    }
-    
-    #workspace {
-        flex-direction: column;
-        overflow: visible;
-    }
-    
-    #sidebar {
-        width: 100%;
-        height: auto;
-        border-right: none;
-        border-bottom: 1px solid var(--border-color);
-        padding: 0.5rem;
-        flex-direction: row;
-        overflow-x: auto;
-        white-space: nowrap;
-        background-color: var(--bg-secondary);
-        -webkit-overflow-scrolling: touch;
-    }
-    
-    .nav-menu {
-        display: flex;
-        flex-direction: row;
-        gap: 0.4rem;
-        width: max-content;
-    }
-    
-    .nav-menu li {
-        padding: 0.5rem 0.8rem;
-        font-size: 0.85rem;
-        border-radius: var(--radius-md);
-        white-space: nowrap;
-    }
-    
-    .nav-menu li.active {
-        border-right: none;
-        border-bottom: 2px solid var(--accent-primary);
-        background-color: var(--accent-light);
-    }
-    
-    .nav-menu li.section-title {
-        display: none;
-    }
-    
-    #main-content {
-        padding: 1rem;
-        overflow: visible;
-        width: 100%;
-        box-sizing: border-box;
-    }
-    
-    #right-panel {
-        width: 100%;
-        height: auto;
-        border-left: none;
-        border-top: 1px solid var(--border-color);
-    }
-    
-    #top-bar {
-        padding: 0.5rem 1rem;
-        flex-wrap: wrap;
-        height: auto;
-        gap: 0.5rem;
-    }
-    
-    #top-bar .project-info {
-        display: none;
-    }
-    
-    .hero h2 {
-        font-size: 1.75rem;
-    }
-    
-    .input-actions {
-        flex-direction: column;
-    }
-    
-    .input-actions button {
-        width: 100%;
-    }
+  #workspace {
+    flex-direction: column;
+  }
+  
+  #sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+    border-right: none;
+    border-top: 1px solid var(--border-color);
+    padding: 0;
+    z-index: 100;
+  }
+
+  .nav-section-title {
+    display: none; /* Hide section titles */
+  }
+
+  .nav-item {
+    flex-direction: column;
+    justify-content: center;
+    padding: var(--space-2);
+    border-left: none;
+    border-bottom: 3px solid transparent;
+  }
+  
+  .nav-item.active {
+    border-left: none;
+    border-bottom-color: var(--accent-primary);
+  }
+
+  .nav-item span:not(.nav-icon):not(.nav-badge) {
+    display: none; /* Hide text, show only icons */
+  }
+  
+  .nav-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+  }
+
+  #main-content {
+    padding: var(--space-4);
+    padding-bottom: calc(var(--space-4) + 60px); /* Space for bottom nav */
+  }
+
+  /* Compact top bar */
+  #top-bar .project-info {
+    display: none;
+  }
 }
 
+/* 480px and 390px (Small Mobile) */
 @media (max-width: 480px) {
-    #top-bar {
-        padding: 0.5rem;
-    }
-    
-    #top-bar .brand h1 {
-        font-size: 1.1rem;
-    }
-    
-    .mode-toggle button {
-        padding: 0.3rem 0.5rem;
-        font-size: 0.75rem;
-    }
-    
-    .hero h2 {
-        font-size: 1.4rem;
-    }
-    
-    .hero p {
-        font-size: 0.95rem;
-        margin-bottom: 1.5rem;
-    }
-    
-    .card {
-        padding: 1rem;
-    }
-    
-    .data-table, .report-table {
-        font-size: 0.78rem;
-    }
+  :root {
+    --text-base: 0.875rem;
+    --text-lg: 1rem;
+    --text-xl: 1.125rem;
+    --text-2xl: 1.25rem;
+  }
+  
+  #top-bar {
+    padding: 0 var(--space-2);
+  }
+  
+  .brand span {
+    display: none; /* Icon only */
+  }
+}
+
+/* Prefers Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

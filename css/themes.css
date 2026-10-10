@@ -1,41 +1,90 @@
-/* themes.css - Light/Dark mode and Student/Research mode styles */
+/* themes.css - GeneTrace Themes */
 
-body.theme-dark {
-    --bg-primary: #0f172a;
-    --bg-secondary: #1e293b;
-    --bg-tertiary: #334155;
-    
-    --text-primary: #f8fafc;
-    --text-secondary: #cbd5e1;
-    --text-muted: #64748b;
-    
-    --border-color: #334155;
-    
-    --accent-light: #1e3a8a;
-    
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+/* Dark Theme Overrides */
+[data-theme='dark'] {
+  --bg-primary: #020617; /* slate-950 */
+  --bg-secondary: #0f172a; /* slate-900 */
+  --bg-tertiary: #1e293b; /* slate-800 */
+  --bg-glass: rgba(2, 6, 23, 0.7);
+  
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-inverse: #020617;
+  
+  --border-color: #334155; /* slate-700 */
+  --border-subtle: #1e293b;
+  
+  /* In dark mode, we might want slightly brighter accents for contrast */
+  --accent-primary: #3b82f6;
+  --accent-hover: #60a5fa;
+  --accent-light: rgba(59, 130, 246, 0.1);
+  --accent-glow: rgba(59, 130, 246, 0.3);
+  
+  /* Status Colors */
+  --success: #34d399;
+  --success-light: rgba(16, 185, 129, 0.1);
+  --warning: #fbbf24;
+  --warning-light: rgba(245, 158, 11, 0.1);
+  --error: #f87171;
+  --error-light: rgba(239, 68, 68, 0.1);
+  --info: #60a5fa;
+  --info-light: rgba(59, 130, 246, 0.1);
+
+  /* Trace Colors in Dark Mode */
+  --trace-g: #ffffff; /* G is white in dark mode for visibility */
 }
 
-/* Student Mode Specific Overrides */
-body.mode-student {
-    /* Slightly warmer, more approachable accent for student mode */
-    --accent-primary: #0ea5e9;
-    --accent-hover: #0284c7;
+/* Light Theme Overrides (Explicit) */
+[data-theme='light'] {
+  /* Same as :root defaults */
 }
 
-body.mode-student .workflow-visual {
-    background: var(--bg-tertiary);
-    padding: 1rem;
-    border-radius: var(--radius-lg);
-    border: 2px dashed var(--accent-primary);
+/* User Roles / Modes */
+[data-plan='free'] {
+  --app-accent: var(--plan-free);
 }
 
-/* Helper classes for toggling visibility based on mode */
-body.mode-research .student-only {
-    display: none !important;
+[data-plan='student'] {
+  --app-accent: var(--plan-student);
+  --accent-primary: #0ea5e9;
+  --accent-hover: #0284c7;
+  --accent-light: rgba(14, 165, 233, 0.1);
 }
 
-body.mode-student .research-only {
-    display: none !important;
+[data-plan='research'] {
+  --app-accent: var(--plan-research);
+  --accent-primary: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-light: rgba(37, 99, 235, 0.1);
+}
+
+/* Mode-Specific Display Classes */
+.show-free, .show-student, .show-research {
+  display: none;
+}
+
+[data-plan='free'] .show-free { display: block; }
+[data-plan='free'] .show-free.inline { display: inline; }
+[data-plan='free'] .show-free.flex { display: flex; }
+
+[data-plan='student'] .show-student { display: block; }
+[data-plan='student'] .show-student.inline { display: inline; }
+[data-plan='student'] .show-student.flex { display: flex; }
+
+[data-plan='research'] .show-research { display: block; }
+[data-plan='research'] .show-research.inline { display: inline; }
+[data-plan='research'] .show-research.flex { display: flex; }
+
+/* Global theme utility classes */
+.bg-primary { background-color: var(--bg-primary); }
+.bg-secondary { background-color: var(--bg-secondary); }
+.bg-tertiary { background-color: var(--bg-tertiary); }
+.bg-glass { background-color: var(--bg-glass); backdrop-filter: blur(8px); }
+
+/* Apply transitions for smooth theme switching */
+body, .bg-primary, .bg-secondary, .bg-tertiary, .border-color, .text-primary, .text-secondary {
+  transition: background-color var(--duration-normal) var(--easing),
+              color var(--duration-normal) var(--easing),
+              border-color var(--duration-normal) var(--easing);
 }

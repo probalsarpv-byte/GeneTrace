@@ -1,4 +1,4 @@
-// app.js - Main GeneTrace Application Controller
+// app.js - Main GeneTrace v1.1 Application Controller
 import { initRouter, navigateTo } from './router.js';
 import { parseFasta } from './core/fasta-parser.js';
 import { validateSequence } from './core/sequence-validator.js';
@@ -17,7 +17,7 @@ import { renderAlignment } from './alignment/alignment-viewer.js';
 import { parseNewick } from './phylogeny/newick.js';
 import { renderSVGTree } from './phylogeny/tree-viewer.js';
 import { processBatch } from './identification/batch.js';
-import { generateReport, exportHtml, GENETRACE_VERSION } from './reports/report.js';
+import { generateReport, exportHtml } from './reports/report.js';
 import { renderSequenceViewer } from './ui/sequence-viewer.js';
 import { renderCompositionDonut, renderGCProfileChart } from './ui/charts.js';
 import { APP_VERSION, APP_RELEASE, APP_TAGLINE, APP_DISCLAIMER } from './version.js';
@@ -33,6 +33,33 @@ import {
     importProject 
 } from './storage/projects.js';
 
+// GeneTrace v1.1 Premium & Intelligence Modules
+import { RawLabUI } from './rawlab/rawlab-ui.js';
+import { parseAB1 } from './rawlab/ab1-parser.js';
+import { createChromatogramViewer } from './rawlab/chromatogram-viewer.js';
+import { analyzeAB1Quality } from './rawlab/ab1-qc.js';
+import { parseFastq } from './rawlab/fastq-parser.js';
+import { calculateFastqQC } from './rawlab/fastq-qc.js';
+import { filterReads, exportFilteredFastq, exportFilteredFasta } from './rawlab/fastq-filter.js';
+import { convertToPlainSequence, formatFastaOutput, convertAb1ToFasta } from './rawlab/format-converter.js';
+import { createSyntheticAB1, createSyntheticFastq } from './rawlab/demo-generator.js';
+
+import { analyzeAndRecommend, WORKFLOWS } from './smart-router/smart-router.js';
+import { SixteenSWorkflow } from './identification/sixteen-s.js';
+import { ITSWorkflow } from './identification/its.js';
+import { EighteenSWorkflow } from './identification/eighteen-s.js';
+import { VirusWorkflow } from './identification/virus.js';
+import { UnknownSequenceInvestigator } from './identification/unknown.js';
+import { EvidenceEngine } from './evidence/evidence-engine.js';
+
+import { OrganismViewer } from './visualization/organism-3d.js';
+import { TaxonomyPath } from './visualization/taxonomy-tree.js';
+
+import { AuthUI } from './auth/auth-ui.js';
+import { AdminDashboard } from './admin/admin.js';
+import { UserDashboard } from './dashboard/user-dashboard.js';
+import { initFeatureManager, canUseFeature, updateUserPlan } from './firebase/feature-manager.js';
+
 class GeneTraceApp {
     constructor() {
         this.theme = localStorage.getItem('genetrace_theme') || 'light';
@@ -46,11 +73,37 @@ class GeneTraceApp {
         this.activeProject = null;
         this.batchResults = [];
 
+        // User & Entitlement State
+        const savedPlan = localStorage.getItem('genetrace_user_plan') || 'research_pro';
+        this.userProfile = {
+            uid: 'local_eval_user',
+            displayName: 'Lead Researcher',
+            email: 'researcher@genetrace.local',
+            role: 'admin',
+            plan: savedPlan,
+            planStatus: 'active'
+        };
+
+        // Subsystems
+        this.evidenceEngine = new EvidenceEngine();
+        this.rawLabUI = new RawLabUI();
+        this.authUI = new AuthUI();
+        this.adminDashboard = new AdminDashboard();
+        this.userDashboard = new UserDashboard();
+        this.organismViewer = null;
+        this.taxonomyPath = null;
+        this.sixteenS = new SixteenSWorkflow();
+        this.itsWorkflow = new ITSWorkflow();
+        this.eighteenS = new EighteenSWorkflow();
+        this.virusWorkflow = new VirusWorkflow();
+        this.unknownInvestigator = new UnknownSequenceInvestigator();
+
         this.initUI();
         this.bindEvents();
         this.initDefaultProject();
         this.registerServiceWorker();
         initRouter();
+        initFeatureManager(this.userProfile);
     }
 
     registerServiceWorker() {
@@ -58,16 +111,6 @@ class GeneTraceApp {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js').then(reg => {
                     console.log('ServiceWorker registered with scope:', reg.scope);
-
-                    reg.addEventListener('updatefound', () => {
-                        const newWorker = reg.installing;
-                        if (!newWorker) return;
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                this.showUpdateBanner(newWorker);
-                            }
-                        });
-                    });
                 }).catch(err => {
                     console.warn('ServiceWorker registration optional notice:', err);
                 });
@@ -75,33 +118,28 @@ class GeneTraceApp {
         }
     }
 
-    showUpdateBanner(worker) {
-        if (document.getElementById('update-notification-banner')) return;
-        const banner = document.createElement('div');
-        banner.id = 'update-notification-banner';
-        banner.style.cssText = 'position:fixed; bottom:20px; right:20px; background:#1e293b; color:#ffffff; padding:0.75rem 1.25rem; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.3); z-index:9999; display:flex; align-items:center; gap:1rem; font-size:0.875rem; border-left:4px solid #2563eb;';
-        banner.innerHTML = `
-            <span>🧬 GeneTrace update available.</span>
-            <button id="btn-sw-reload" style="background:#2563eb; color:#ffffff; border:none; padding:0.35rem 0.75rem; border-radius:4px; cursor:pointer; font-size:0.8rem; font-weight:600;">Reload</button>
-            <button id="btn-sw-dismiss" style="background:transparent; color:#94a3b8; border:none; cursor:pointer; font-size:1rem;">✕</button>
-        `;
-        document.body.appendChild(banner);
-
-        document.getElementById('btn-sw-reload').addEventListener('click', () => {
-            worker.postMessage({ action: 'SKIP_WAITING' });
-            window.location.reload();
-        });
-
-        document.getElementById('btn-sw-dismiss').addEventListener('click', () => {
-            banner.remove();
-        });
-    }
-
     initUI() {
         this.applyTheme(this.theme);
         this.applyMode(this.mode);
+        this.updatePlanBadge();
         const orfInput = document.getElementById('setting-min-orf');
         if (orfInput) orfInput.value = this.minOrfLen;
+    }
+
+    updatePlanBadge() {
+        const badge = document.getElementById('plan-badge');
+        if (badge) {
+            const plan = this.userProfile.plan || 'free';
+            badge.textContent = plan.toUpperCase().replace('_', ' ');
+            badge.className = `plan-badge ${plan.includes('pro') ? 'pro' : plan}`;
+        }
+    }
+
+    updateUserPlan(newPlan) {
+        this.userProfile.plan = newPlan;
+        localStorage.setItem('genetrace_user_plan', newPlan);
+        updateUserPlan(this.userProfile);
+        this.updatePlanBadge();
     }
 
     async initDefaultProject() {
@@ -175,16 +213,64 @@ class GeneTraceApp {
             btnSettings.addEventListener('click', () => navigateTo('settings'));
         }
 
+        const planBadge = document.getElementById('plan-badge');
+        if (planBadge) {
+            planBadge.addEventListener('click', () => this.showPremiumModal('Unlock Full Workspace Features'));
+        }
+
+        const accountBtn = document.getElementById('account-btn');
+        if (accountBtn) {
+            accountBtn.addEventListener('click', () => navigateTo('dashboard'));
+        }
+
+        // Modal triggers
+        const btnClosePrem = document.getElementById('btn-close-premium-modal');
+        if (btnClosePrem) {
+            btnClosePrem.addEventListener('click', () => this.hidePremiumModal());
+        }
+
+        const btnUpStudent = document.getElementById('btn-upgrade-student');
+        if (btnUpStudent) {
+            btnUpStudent.addEventListener('click', () => {
+                this.updateUserPlan('student_pro');
+                this.hidePremiumModal();
+                alert('Plan updated to Student Pro!');
+            });
+        }
+
+        const btnUpResearch = document.getElementById('btn-upgrade-research');
+        if (btnUpResearch) {
+            btnUpResearch.addEventListener('click', () => {
+                this.updateUserPlan('research_pro');
+                this.hidePremiumModal();
+                alert('Plan updated to Research Pro!');
+            });
+        }
+
+        // Clear evidence
+        const btnClearEv = document.getElementById('btn-clear-evidence');
+        if (btnClearEv) {
+            btnClearEv.addEventListener('click', () => {
+                this.evidenceEngine.clear();
+                const b = document.getElementById('evidence-board');
+                if (b) b.innerHTML = '<p class="empty-state">Evidence board reset.</p>';
+            });
+        }
+
         // Home tabs (Paste, Upload, Example)
-        const tabButtons = document.querySelectorAll('.tab-btn');
+        const tabButtons = document.querySelectorAll('.input-tabs .tab-btn');
         tabButtons.forEach(btn => {
             btn.addEventListener('click', () => {
-                tabButtons.forEach(b => b.classList.remove('active'));
+                const parent = btn.closest('.input-tabs') || btn.parentElement;
+                parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+                
                 const targetTab = btn.getAttribute('data-tab');
-                document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
-                const pane = document.getElementById(`tab-content-${targetTab}`);
-                if (pane) pane.style.display = 'block';
+                if (targetTab) {
+                    document.querySelectorAll('.tab-pane').forEach(p => p.style.display = 'none');
+                    const pane = document.getElementById(`tab-content-${targetTab}`);
+                    if (pane) pane.style.display = 'block';
+                }
             });
         });
 
@@ -199,8 +285,7 @@ class GeneTraceApp {
                     const text = event.target.result;
                     const mainInput = document.getElementById('main-sequence-input');
                     if (mainInput) mainInput.value = text;
-                    // Switch back to paste tab to view
-                    tabButtons[0].click();
+                    tabButtons[0]?.click();
                 };
                 reader.readAsText(file);
             });
@@ -211,7 +296,7 @@ class GeneTraceApp {
             btn.addEventListener('click', () => {
                 const exType = btn.getAttribute('data-example');
                 this.loadExampleSequence(exType);
-                tabButtons[0].click();
+                tabButtons[0]?.click();
             });
         });
 
@@ -225,6 +310,120 @@ class GeneTraceApp {
         if (btnIdentify) {
             btnIdentify.addEventListener('click', () => this.handleIdentifySequence());
         }
+
+        const btnJumpRec = document.getElementById('btn-jump-recommended');
+        if (btnJumpRec) {
+            btnJumpRec.addEventListener('click', () => {
+                if (this.primaryRecommendedId) {
+                    const target = this.getWorkflowViewId(this.primaryRecommendedId);
+                    navigateTo(target);
+                } else {
+                    navigateTo('analyze-identify');
+                }
+            });
+        }
+
+        // Raw Lab sub-tabs
+        const rawTabs = document.querySelectorAll('[data-rawtab]');
+        rawTabs.forEach(btn => {
+            btn.addEventListener('click', () => {
+                rawTabs.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const t = btn.getAttribute('data-rawtab');
+                ['ab1', 'fastq', 'conv'].forEach(id => {
+                    const el = document.getElementById(`rawtab-${id}-content`);
+                    if (el) el.style.display = (id === t) ? 'block' : 'none';
+                });
+            });
+        });
+
+        // Raw Lab AB1 & FASTQ
+        this.rawLabUI.initAB1Tab();
+        this.rawLabUI.initFASTQTab();
+
+        const btnDemoAb1 = document.getElementById('btn-load-demo-ab1');
+        if (btnDemoAb1) {
+            btnDemoAb1.addEventListener('click', () => {
+                const syntheticBuffer = createSyntheticAB1('ATGAAGAGCAACGGCGAGGAGCTGTTCACCGGGGTGGTGCCC', 'Demo_GFP_Sanger_1');
+                this.rawLabUI.state.currentAB1 = parseAB1(syntheticBuffer);
+                this.rawLabUI.renderAB1Viewer();
+                const qcPanel = document.getElementById('ab1-qc-panel');
+                if (qcPanel) qcPanel.style.display = 'block';
+            });
+        }
+
+        const btnDemoFastq = document.getElementById('btn-load-demo-fastq');
+        if (btnDemoFastq) {
+            btnDemoFastq.addEventListener('click', () => {
+                const demoFastqText = createSyntheticFastq();
+                const reads = parseFastq(demoFastqText);
+                this.rawLabUI.state.currentFASTQ = reads;
+                const qc = calculateFastqQC(reads);
+                this.rawLabUI.renderFASTQQCCharts(qc);
+            });
+        }
+
+        const btnFastqUseFirst = document.getElementById('fastq-use-first');
+        if (btnFastqUseFirst) {
+            btnFastqUseFirst.addEventListener('click', () => {
+                if (!this.rawLabUI.state.currentFASTQ || this.rawLabUI.state.currentFASTQ.length === 0) {
+                    alert('Please load a FASTQ file first.');
+                    return;
+                }
+                const firstRead = this.rawLabUI.state.currentFASTQ[0];
+                const fasta = `>${firstRead.id} ${firstRead.description}\n${firstRead.sequence}`;
+                const mainInput = document.getElementById('main-sequence-input');
+                if (mainInput) mainInput.value = fasta;
+                navigateTo('home');
+                this.handleSequenceInput();
+            });
+        }
+
+        // Converter Tab
+        const btnConvStrip = document.getElementById('btn-conv-strip');
+        if (btnConvStrip) {
+            btnConvStrip.addEventListener('click', () => {
+                const val = document.getElementById('conv-input')?.value || '';
+                document.getElementById('conv-output').value = convertToPlainSequence(val);
+            });
+        }
+
+        const btnConvWrap = document.getElementById('btn-conv-wrap60');
+        if (btnConvWrap) {
+            btnConvWrap.addEventListener('click', () => {
+                const val = document.getElementById('conv-input')?.value || '';
+                const plain = convertToPlainSequence(val);
+                document.getElementById('conv-output').value = formatFastaOutput('Formatted_Sequence', plain, 60);
+            });
+        }
+
+        const btnConvRevComp = document.getElementById('btn-conv-revcomp');
+        if (btnConvRevComp) {
+            btnConvRevComp.addEventListener('click', () => {
+                const val = document.getElementById('conv-input')?.value || '';
+                const plain = convertToPlainSequence(val);
+                document.getElementById('conv-output').value = reverseComplement(plain);
+            });
+        }
+
+        // Smart Router view
+        const btnRouterRe = document.getElementById('btn-router-reanalyze');
+        if (btnRouterRe) {
+            btnRouterRe.addEventListener('click', () => this.runSmartRouter());
+        }
+
+        // 16S Identification Events
+        this.bind16SEvents();
+        // ITS Fungal Events
+        this.bindITSEvents();
+        // 18S Eukaryotic Events
+        this.bind18SEvents();
+        // Virus Events
+        this.bindVirusEvents();
+        // Unknown Sequence Events
+        this.bindUnknownEvents();
+        // 3D Visualization Events
+        this.bind3DEvents();
 
         // Nucleotide buttons
         const btnFindOrfs = document.getElementById('btn-find-orfs');
@@ -311,13 +510,6 @@ class GeneTraceApp {
         const btnLoadMutEx = document.getElementById('btn-load-mutation-example');
         if (btnLoadMutEx) {
             btnLoadMutEx.addEventListener('click', () => {
-                // Known biological sequences with 1 substitution, 1 insertion, 1 deletion
-                // Ref: ATG-CGATCGATC (12 bases)
-                // Alt: ATGCCGATC-ATC (12 bases aligned)
-                // Pos 4: Ref '-' vs Alt 'C' (Insertion)
-                // Pos 6: Ref 'A' vs Alt 'A'
-                // Pos 10: Ref 'G' vs Alt '-' (Deletion)
-                // Pos 12: Ref 'T' vs Alt 'C' (Substitution)
                 document.getElementById('mutation-ref').value = 'ATG-CGACTGATC';
                 document.getElementById('mutation-alt').value = 'ATGCCGACTGACC';
             });
@@ -490,6 +682,492 @@ AGAGTTTGATCCTGGCTCAGGACGAACGCTGGCGGCGTGCCTAATACATGCAAGTCGAAC`;
                 }
             });
         }
+
+        // Navigation listener to trigger views
+        window.addEventListener('genetrace:navigated', (e) => {
+            const viewId = e.detail?.viewId;
+            if (viewId === 'dashboard') {
+                this.userDashboard.render('user-dashboard-container', this.userProfile);
+            } else if (viewId === 'admin') {
+                this.adminDashboard.render('admin-dashboard-container');
+            } else if (viewId === 'vis-3d') {
+                this.initOrganism3D();
+            } else if (viewId === 'analyze-identify') {
+                this.runSmartRouter();
+            }
+        });
+    }
+
+    showPremiumModal(title = 'Unlock Full Features', desc = 'This feature requires a Student Pro or Research Pro plan.') {
+        const modal = document.getElementById('premium-gate-modal');
+        if (!modal) return;
+        const titleEl = document.getElementById('premium-gate-title');
+        const descEl = document.getElementById('premium-gate-desc');
+        if (titleEl) titleEl.textContent = title;
+        if (descEl) descEl.textContent = desc;
+        modal.style.opacity = '1';
+        modal.style.pointerEvents = 'auto';
+    }
+
+    hidePremiumModal() {
+        const modal = document.getElementById('premium-gate-modal');
+        if (modal) {
+            modal.style.opacity = '0';
+            modal.style.pointerEvents = 'none';
+        }
+    }
+
+    getWorkflowViewId(recId) {
+        const map = {
+            '16S': 'id-16s',
+            'ITS': 'id-its',
+            '18S': 'id-18s',
+            'virus': 'id-virus',
+            'protein': 'analyze-protein',
+            'unknown': 'id-unknown'
+        };
+        return map[recId] || 'analyze-identify';
+    }
+
+    // 16S rRNA Identification Workflow
+    bind16SEvents() {
+        const btnCopy = document.getElementById('btn-16s-copy-fasta');
+        if (btnCopy) {
+            btnCopy.onclick = () => {
+                if (!this.currentSequence) return alert('No sequence loaded');
+                navigator.clipboard.writeText(`>${this.currentSequence.name}\n${this.currentSequence.sequence}`);
+                alert('16S FASTA copied to clipboard!');
+            };
+        }
+
+        const btnOpenNcbi = document.getElementById('btn-16s-open-ncbi');
+        if (btnOpenNcbi) {
+            btnOpenNcbi.onclick = () => {
+                const search = this.sixteenS.prepareSearch(this.currentSequence?.sequence || '');
+                window.open(search.getNCBIBlast16SUrl(), '_blank');
+            };
+        }
+
+        const btnDemo = document.getElementById('btn-16s-load-candidate-demo');
+        if (btnDemo) {
+            btnDemo.onclick = () => {
+                document.getElementById('input-16s-acc').value = 'NR_024570.1';
+                document.getElementById('input-16s-org').value = 'Escherichia coli strain K-12';
+                document.getElementById('input-16s-ident').value = '99.8';
+                document.getElementById('input-16s-cov').value = '100';
+            };
+        }
+
+        const btnEval = document.getElementById('btn-16s-eval-candidate');
+        if (btnEval) {
+            btnEval.onclick = () => {
+                const acc = document.getElementById('input-16s-acc')?.value || 'NR_UNKNOWN';
+                const org = document.getElementById('input-16s-org')?.value || 'Unknown bacterium';
+                const ident = parseFloat(document.getElementById('input-16s-ident')?.value || '0');
+                const cov = parseFloat(document.getElementById('input-16s-cov')?.value || '0');
+
+                const candidate = { accession: acc, organism: org, identity: ident, coverage: cov };
+                const conf = this.sixteenS.assessConfidence([candidate]);
+
+                const resDiv = document.getElementById('sixteen-s-eval-result');
+                if (resDiv) {
+                    resDiv.innerHTML = `
+                        <div class="card" style="margin:0; background:var(--bg-secondary); border-left:4px solid var(--accent-primary);">
+                            <h4>Taxonomic Assignment Assessment</h4>
+                            <p><strong>Candidate:</strong> ${candidate.organism} (<em>${candidate.accession}</em>)</p>
+                            <p><strong>Identity:</strong> ${candidate.identity}% | <strong>Coverage:</strong> ${candidate.coverage}%</p>
+                            <p><strong>Confidence Tier:</strong> <span class="badge ${conf.level === 'MODERATE' ? 'badge-protein' : 'badge-beta'}">${conf.level}</span></p>
+                            <p style="font-size:0.85rem; color:var(--text-secondary); margin-top:0.5rem;">${conf.note}</p>
+                        </div>
+                    `;
+                }
+            };
+        }
+
+        const btnAddEv = document.getElementById('btn-16s-add-evidence');
+        if (btnAddEv) {
+            btnAddEv.onclick = () => {
+                const org = document.getElementById('input-16s-org')?.value || 'Escherichia coli';
+                const ident = parseFloat(document.getElementById('input-16s-ident')?.value || '99.8');
+                this.evidenceEngine.addEvidence(
+                    'TAXONOMIC_CONSISTENCY',
+                    `16S Alignment: ${org} (${ident}% ID)`,
+                    '16S rRNA Marker',
+                    ident >= 99.0 ? 'STRONG' : 'MODERATE',
+                    'High identity to reference type strain.',
+                    'Requires polyphasic validation for definitive species confirmation.'
+                );
+                this.evidenceEngine.renderEvidenceBoard('evidence-board');
+                alert('Added to Evidence Board!');
+            };
+        }
+    }
+
+    // ITS Fungal Identification
+    bindITSEvents() {
+        const btnCopy = document.getElementById('btn-its-copy-fasta');
+        if (btnCopy) {
+            btnCopy.onclick = () => {
+                if (!this.currentSequence) return alert('No sequence loaded');
+                navigator.clipboard.writeText(`>${this.currentSequence.name}\n${this.currentSequence.sequence}`);
+                alert('ITS FASTA copied!');
+            };
+        }
+
+        const btnOpenNcbi = document.getElementById('btn-its-open-ncbi');
+        if (btnOpenNcbi) {
+            btnOpenNcbi.onclick = () => {
+                window.open('https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&DATABASE=ITS_RefSeq_Fungi', '_blank');
+            };
+        }
+
+        const btnDemo = document.getElementById('btn-its-load-candidate-demo');
+        if (btnDemo) {
+            btnDemo.onclick = () => {
+                document.getElementById('input-its-acc').value = 'NR_111007.1';
+                document.getElementById('input-its-org').value = 'Saccharomyces cerevisiae';
+                document.getElementById('input-its-ident').value = '99.5';
+                document.getElementById('input-its-cov').value = '98.0';
+            };
+        }
+
+        const btnEval = document.getElementById('btn-its-eval-candidate');
+        if (btnEval) {
+            btnEval.onclick = () => {
+                const acc = document.getElementById('input-its-acc')?.value;
+                const org = document.getElementById('input-its-org')?.value;
+                const ident = parseFloat(document.getElementById('input-its-ident')?.value || '0');
+                const cov = parseFloat(document.getElementById('input-its-cov')?.value || '0');
+
+                const candidate = { accession: acc, organism: org, identity: ident, coverage: cov };
+                const conf = this.itsWorkflow.assessConfidence([candidate]);
+
+                const resDiv = document.getElementById('its-eval-result');
+                if (resDiv) {
+                    resDiv.innerHTML = `
+                        <div class="card" style="margin:0; background:var(--bg-secondary); border-left:4px solid var(--accent-primary);">
+                            <h4>Fungal Barcode Assessment</h4>
+                            <p><strong>Candidate:</strong> ${candidate.organism} (${candidate.accession})</p>
+                            <p><strong>Identity:</strong> ${candidate.identity}% | <strong>Coverage:</strong> ${candidate.coverage}%</p>
+                            <p><strong>Confidence:</strong> <span class="badge badge-protein">${conf.level}</span></p>
+                            <p style="font-size:0.85rem; color:var(--text-secondary);">${conf.reasoning || 'Fungal species delimitation requires morphological and multi-locus corroboration.'}</p>
+                        </div>
+                    `;
+                }
+            };
+        }
+
+        const btnAddEv = document.getElementById('btn-its-add-evidence');
+        if (btnAddEv) {
+            btnAddEv.onclick = () => {
+                const org = document.getElementById('input-its-org')?.value || 'Saccharomyces cerevisiae';
+                const ident = parseFloat(document.getElementById('input-its-ident')?.value || '99.5');
+                this.evidenceEngine.addEvidence(
+                    'TAXONOMIC_CONSISTENCY',
+                    `ITS Fungal Match: ${org} (${ident}% ID)`,
+                    'ITS Barcode',
+                    ident >= 99.0 ? 'STRONG' : 'MODERATE',
+                    'Fungal species identification supported by nuclear ribosomal ITS.',
+                    'Species complexes may share identical ITS alleles.'
+                );
+                this.evidenceEngine.renderEvidenceBoard('evidence-board');
+                alert('Added to Evidence Board!');
+            };
+        }
+    }
+
+    // 18S Eukaryotic Events
+    bind18SEvents() {
+        const btnDemo = document.getElementById('btn-18s-load-demo');
+        if (btnDemo) {
+            btnDemo.onclick = () => {
+                document.getElementById('input-18s-acc').value = 'NR_044700.1';
+                document.getElementById('input-18s-org').value = 'Tetrahymena thermophila';
+                document.getElementById('input-18s-ident').value = '99.2';
+                document.getElementById('input-18s-cov').value = '97.5';
+            };
+        }
+
+        const btnEval = document.getElementById('btn-18s-eval');
+        if (btnEval) {
+            btnEval.onclick = () => {
+                const org = document.getElementById('input-18s-org')?.value;
+                const ident = parseFloat(document.getElementById('input-18s-ident')?.value || '0');
+                const conf = this.eighteenS.assessConfidence([{ organism: org, identity: ident }]);
+
+                const resDiv = document.getElementById('eighteen-s-eval-result');
+                if (resDiv) {
+                    resDiv.innerHTML = `
+                        <div class="card" style="margin:0; background:var(--bg-secondary); border-left:4px solid var(--accent-primary);">
+                            <h4>Eukaryotic 18S Assessment</h4>
+                            <p><strong>Organism:</strong> ${org} (${ident}% Identity)</p>
+                            <p><strong>Confidence:</strong> <span class="badge badge-protein">${conf.level}</span></p>
+                            <p style="font-size:0.85rem; color:var(--text-secondary);">${conf.reasoning || 'Genus-level resolution supported.'}</p>
+                        </div>
+                    `;
+                }
+            };
+        }
+
+        const btnAddEv = document.getElementById('btn-18s-add-evidence');
+        if (btnAddEv) {
+            btnAddEv.onclick = () => {
+                const org = document.getElementById('input-18s-org')?.value || 'Tetrahymena thermophila';
+                const ident = parseFloat(document.getElementById('input-18s-ident')?.value || '99.2');
+                this.evidenceEngine.addEvidence(
+                    'TAXONOMIC_CONSISTENCY',
+                    `18S Eukaryotic Match: ${org} (${ident}% ID)`,
+                    '18S rRNA',
+                    ident >= 99.0 ? 'MODERATE' : 'WEAK',
+                    'Microeukaryotic placement determined.',
+                    '18S provides lower species-level discrimination than ITS.'
+                );
+                this.evidenceEngine.renderEvidenceBoard('evidence-board');
+                alert('Added to Evidence Board!');
+            };
+        }
+    }
+
+    // Virus Events
+    bindVirusEvents() {
+        const btnDemo = document.getElementById('btn-virus-load-demo');
+        if (btnDemo) {
+            btnDemo.onclick = () => {
+                document.getElementById('input-virus-acc').value = 'NC_001416.1';
+                document.getElementById('input-virus-org').value = 'Enterobacteria phage lambda';
+                document.getElementById('input-virus-ident').value = '96.5';
+                document.getElementById('input-virus-cov').value = '92.0';
+            };
+        }
+
+        const btnEval = document.getElementById('btn-virus-eval');
+        if (btnEval) {
+            btnEval.onclick = () => {
+                const org = document.getElementById('input-virus-org')?.value;
+                const ident = parseFloat(document.getElementById('input-virus-ident')?.value || '0');
+                const conf = this.virusWorkflow.assessConfidence([{ organism: org, identity: ident }]);
+
+                const resDiv = document.getElementById('virus-eval-result');
+                if (resDiv) {
+                    resDiv.innerHTML = `
+                        <div class="card" style="margin:0; background:var(--bg-secondary); border-left:4px solid var(--accent-primary);">
+                            <h4>Viral Homology Evaluation</h4>
+                            <p><strong>Viral Match:</strong> ${org} (${ident}% Identity)</p>
+                            <p><strong>Confidence:</strong> <span class="badge badge-beta">${conf.level}</span></p>
+                            <p style="font-size:0.85rem; color:var(--text-secondary);">${conf.reasoning || 'Family/genus viral classification suggested.'}</p>
+                        </div>
+                    `;
+                }
+            };
+        }
+
+        const btnAddEv = document.getElementById('btn-virus-add-evidence');
+        if (btnAddEv) {
+            btnAddEv.onclick = () => {
+                const org = document.getElementById('input-virus-org')?.value || 'Enterobacteria phage lambda';
+                const ident = parseFloat(document.getElementById('input-virus-ident')?.value || '96.5');
+                this.evidenceEngine.addEvidence(
+                    'TAXONOMIC_CONSISTENCY',
+                    `Viral Match: ${org} (${ident}% ID)`,
+                    'Viral Homology',
+                    'MODERATE',
+                    'High divergence typical in viral genomics; family-level placement supported.',
+                    'Strictly non-clinical educational research screening.'
+                );
+                this.evidenceEngine.renderEvidenceBoard('evidence-board');
+                alert('Added to Evidence Board!');
+            };
+        }
+    }
+
+    // Unknown Sequence Pipeline Events
+    bindUnknownEvents() {
+        const btnRun = document.getElementById('btn-run-unknown-investigate');
+        if (btnRun) {
+            btnRun.onclick = () => {
+                if (!this.currentSequence) return alert('Please load a sequence in the Home tab first.');
+                
+                const report = this.unknownInvestigator.investigate(
+                    this.currentSequence,
+                    this.currentValidation,
+                    this.currentStats,
+                    { hasSubstantialOrfs: this.currentOrfs && this.currentOrfs.length > 0 }
+                );
+
+                const container = document.getElementById('unknown-pipeline-container');
+                if (container) {
+                    container.innerHTML = `
+                        <div class="card" style="margin:0; background:var(--bg-secondary);">
+                            <h3>Diagnostic Investigation Summary</h3>
+                            
+                            <h4 style="margin-top:1.5rem; color:var(--accent-primary);">1. Empirical Observations (Verified Facts)</h4>
+                            <table class="data-table" style="width:100%; margin-top:0.5rem;">
+                                <tr><th>Input Type</th><td>${report.observed.type}</td></tr>
+                                <tr><th>Length</th><td>${report.observed.length} ${report.observed.type === 'Protein' ? 'aa' : 'bp'}</td></tr>
+                                <tr><th>GC Content</th><td>${report.observed.gc}%</td></tr>
+                                <tr><th>Coding Potential</th><td>${report.observed.codingTendency} (${report.observed.orfCount} detected ORFs)</td></tr>
+                                <tr><th>Conserved Motifs</th><td>${report.observed.markerClues.length > 0 ? report.observed.markerClues.join(', ') : 'None detected'}</td></tr>
+                            </table>
+
+                            <h4 style="margin-top:1.5rem; color:var(--accent-primary);">2. Biological Interpretation (Hypothesis)</h4>
+                            <div style="background:var(--bg-tertiary); padding:1rem; border-radius:var(--radius-md); margin-top:0.5rem;">
+                                <p><strong>Most Likely Class:</strong> ${report.interpretation.likelyCategory}</p>
+                                <p style="font-size:0.85rem; color:var(--text-secondary); margin-top:0.25rem;">${report.interpretation.reasoning}</p>
+                            </div>
+
+                            <h4 style="margin-top:1.5rem; color:var(--accent-primary);">3. Recommended Next Step</h4>
+                            <p style="margin-top:0.5rem;">${report.recommendedNextStep.description}</p>
+
+                            <h4 style="margin-top:1.5rem; color:var(--warning);">4. Scientific Limitations</h4>
+                            <ul style="font-size:0.85rem; color:var(--text-secondary); padding-left:1.2rem; margin-top:0.5rem;">
+                                ${report.limitations.map(l => `<li>${l}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+            };
+        }
+    }
+
+    // 3D Organism & Taxonomy Viewer
+    bind3DEvents() {
+        document.querySelectorAll('.btn-3d-model').forEach(btn => {
+            btn.onclick = () => {
+                const type = btn.getAttribute('data-type');
+                if (this.organismViewer) {
+                    this.organismViewer.showOrganism(type, btn.textContent, true);
+                }
+            };
+        });
+
+        document.querySelectorAll('.btn-tax-preset').forEach(btn => {
+            btn.onclick = () => {
+                const preset = btn.getAttribute('data-preset');
+                this.renderTaxonomyPreset(preset);
+            };
+        });
+    }
+
+    async initOrganism3D() {
+        if (!this.organismViewer) {
+            try {
+                this.organismViewer = new OrganismViewer('organism-viewer-container', { interactive: true, width: 380, height: 320 });
+                await this.organismViewer.init();
+                this.organismViewer.showOrganism('bacterium', 'Escherichia coli (Illustrative Model)', true);
+            } catch (err) {
+                console.warn('3D initialization fallback:', err);
+            }
+        }
+        if (!this.taxonomyPath) {
+            try {
+                this.taxonomyPath = new TaxonomyPath('taxonomy-path-container');
+                this.renderTaxonomyPreset('ecoli');
+            } catch (err) {
+                console.warn('Taxonomy path initialization error:', err);
+            }
+        }
+    }
+
+    renderTaxonomyPreset(preset) {
+        if (!this.taxonomyPath) return;
+        const presets = {
+            'ecoli': {
+                domain: 'Bacteria',
+                phylum: 'Pseudomonadota',
+                class: 'Gammaproteobacteria',
+                order: 'Enterobacterales',
+                family: 'Enterobacteriaceae',
+                genus: 'Escherichia',
+                species: 'coli'
+            },
+            'yeast': {
+                domain: 'Eukaryota',
+                kingdom: 'Fungi',
+                phylum: 'Ascomycota',
+                class: 'Saccharomycetes',
+                order: 'Saccharomycetales',
+                family: 'Saccharomycetaceae',
+                genus: 'Saccharomyces',
+                species: 'cerevisiae'
+            },
+            'lambda': {
+                domain: 'Viruses',
+                phylum: 'Uroviricota',
+                class: 'Caudoviricetes',
+                order: 'Crassvirales (tentative)',
+                family: 'Siphoviridae',
+                genus: 'Lambdavirus',
+                species: 'Escherichia virus Lambda'
+            }
+        };
+        const data = presets[preset] || presets['ecoli'];
+        this.taxonomyPath.render(data);
+    }
+
+    runSmartRouter() {
+        if (!this.currentSequence) return;
+        
+        const rec = analyzeAndRecommend(
+            this.currentSequence,
+            this.currentValidation,
+            this.currentStats,
+            { hasSubstantialOrfs: this.currentOrfs && this.currentOrfs.length > 0 }
+        );
+
+        this.primaryRecommendedId = rec.primaryWorkflow;
+
+        // Update home quick banner
+        const banner = document.getElementById('home-router-banner');
+        const title = document.getElementById('home-router-title');
+        const reason = document.getElementById('home-router-reason');
+        if (banner && title && reason && rec.recommendations.length > 0) {
+            banner.style.display = 'block';
+            title.textContent = `${rec.recommendations[0].icon} ${rec.recommendations[0].name} (${rec.confidence} Confidence)`;
+            reason.textContent = rec.reasoning.join('. ') || 'Recommended based on sequence composition and length.';
+        }
+
+        // Update Smart Router view
+        const container = document.getElementById('router-recommendation-container');
+        if (container) {
+            container.innerHTML = `
+                <div class="card" style="margin:0; background:var(--bg-secondary);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                        <div>
+                            <span class="badge badge-pro">TOP RECOMMENDATION</span>
+                            <h3 style="margin-top:0.5rem;">${rec.recommendations[0]?.icon || '🧭'} ${rec.recommendations[0]?.name}</h3>
+                            <p style="font-size:0.9rem; color:var(--text-secondary); margin-top:0.25rem;">
+                                ${rec.reasoning.join(' • ')}
+                            </p>
+                        </div>
+                        <button class="btn primary" id="btn-router-launch-top">Launch Pipeline ➔</button>
+                    </div>
+
+                    <h4 style="margin-top:1.5rem; font-size:0.95rem;">All Evaluated Pathways</h4>
+                    <div style="display:flex; flex-direction:column; gap:0.5rem; margin-top:0.75rem;">
+                        ${rec.recommendations.map(r => `
+                            <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem; background:var(--bg-primary); border-radius:var(--radius-md); border:1px solid var(--border-color);">
+                                <div style="display:flex; align-items:center; gap:0.75rem;">
+                                    <span style="font-size:1.3rem;">${r.icon}</span>
+                                    <div>
+                                        <strong>${r.name}</strong>
+                                        <div style="font-size:0.8rem; color:var(--text-muted);">${r.reasoning.join(', ')}</div>
+                                    </div>
+                                </div>
+                                <span class="badge ${r.confidence === 'HIGH' ? 'badge-protein' : r.confidence === 'MODERATE' ? 'badge-dna' : 'badge-beta'}">${r.confidence}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            const btnLaunch = document.getElementById('btn-router-launch-top');
+            if (btnLaunch) {
+                btnLaunch.onclick = () => {
+                    const target = this.getWorkflowViewId(rec.primaryWorkflow);
+                    navigateTo(target);
+                };
+            }
+        }
     }
 
     loadExampleSequence(type) {
@@ -556,7 +1234,13 @@ ATGCGNATCRYTGWSKMBDHVNATCGATCG`;
             this.currentOrfs = [];
 
             this.updateSampleHeader(primarySequence.name);
-            this.updateEvidenceBoard(primarySequence, validation, stats);
+            
+            // Build evidence
+            this.evidenceEngine = EvidenceEngine.fromSequenceAnalysis(primarySequence, validation, stats);
+            this.evidenceEngine.renderEvidenceBoard('evidence-board');
+
+            // Run Smart Router
+            this.runSmartRouter();
             
             if (validation.type === 'Protein') {
                 navigateTo('analyze-protein');
@@ -602,7 +1286,6 @@ ATGCGNATCRYTGWSKMBDHVNATCGATCG`;
                     renderGCProfileChart('gc-profile-chart', gcProfile);
                 }
 
-                // Reset ORF container
                 const orfContainer = document.getElementById('orf-results-container');
                 if (orfContainer) orfContainer.innerHTML = '';
             }
@@ -617,583 +1300,430 @@ ATGCGNATCRYTGWSKMBDHVNATCGATCG`;
         await this.handleSequenceInput();
         if (!this.currentSequence) return;
         navigateTo('analyze-identify');
-        
-        const container = document.getElementById('identify-content-container');
-        if (!container) return;
+    }
 
-        const seq = this.currentSequence.sequence;
-        const len = seq.length;
-        const gc = this.currentStats ? this.currentStats.gcPercentage.toFixed(1) : 'N/A';
-        
-        let markerAssessment = 'Standard genomic / coding locus';
-        if (len >= 400 && len <= 1600 && seq.toUpperCase().includes('AGAGTTTGAT')) {
-            markerAssessment = 'High match to bacterial 16S rRNA gene (V1-V9 primers detected)';
-        } else if (len >= 500 && len <= 800) {
-            markerAssessment = 'Potential mitochondrial COI (cytochrome c oxidase) barcode or ribosomal ITS fragment';
-        }
+    async handleSaveCurrentSample() {
+        if (!this.currentSequence) return alert('No sequence to save.');
+        if (!this.activeProject) return alert('No active project found.');
 
-        container.innerHTML = `
-            <div class="card" style="background:var(--bg-secondary);">
-                <h3>Automated Sequence Classification</h3>
-                <table class="data-table" style="margin-top:1rem; margin-bottom:1.5rem;">
-                    <tr><th>Sample Name</th><td><strong>${this.currentSequence.name}</strong></td></tr>
-                    <tr><th>Sequence Type</th><td>${this.currentValidation.type}</td></tr>
-                    <tr><th>Length</th><td>${len} bp</td></tr>
-                    <tr><th>GC Content</th><td>${gc}%</td></tr>
-                    <tr><th>Diagnostic Marker Assessment</th><td><span style="color:var(--accent-primary); font-weight:600;">${markerAssessment}</span></td></tr>
-                </table>
-
-                <div style="background:var(--bg-tertiary); padding:1rem; border-radius:var(--radius-md); border-left:4px solid var(--accent-primary); margin-bottom:1.5rem;">
-                    <p style="margin:0; font-size:0.9rem;">
-                        <strong>Scientific Verification Protocol:</strong> GeneTrace calculates deterministic client-side metrics and diagnostic markers. To obtain certified taxonomic classification down to species level without simulated data, submit directly to the NCBI BLAST public repository below.
-                    </p>
-                </div>
-
-                <button id="btn-identify-launch-blast" class="primary large">Launch NCBI BLASTn for Verified Taxonomic Hit ↗</button>
-            </div>
-        `;
-
-        const blastBtn = document.getElementById('btn-identify-launch-blast');
-        if (blastBtn) {
-            blastBtn.addEventListener('click', async () => {
-                const { createBlastForm } = await import('./external/blast.js');
-                const submit = createBlastForm('identify-content-container', this.currentSequence.sequence, 'blastn');
-                if (submit) submit();
+        try {
+            await saveSample(this.activeProject.id, {
+                name: this.currentSequence.name || 'Sample_' + Date.now(),
+                type: this.currentValidation ? this.currentValidation.type : 'DNA',
+                sequence: this.currentSequence.sequence,
+                stats: this.currentStats
             });
+            alert(`Sample "${this.currentSequence.name}" saved to project "${this.activeProject.name}"!`);
+            this.loadProjectSamples();
+        } catch (err) {
+            console.error('Save sample failed:', err);
+            alert('Failed to save sample: ' + err.message);
         }
     }
 
     handleFindORFs() {
-        if (!this.currentSequence || (this.currentValidation.type !== 'DNA' && this.currentValidation.type !== 'RNA')) {
-            alert('Please load a valid nucleotide sequence first.');
-            return;
-        }
+        if (!this.currentSequence) return alert('Please analyze a nucleotide sequence first.');
+        const orfs = findORFs(this.currentSequence.sequence, this.minOrfLen);
+        this.currentOrfs = orfs;
 
-        try {
-            const orfs = findORFs(this.currentSequence.sequence, this.minOrfLen);
-            this.currentOrfs = orfs;
-            
-            const container = document.getElementById('orf-results-container');
-            if (!container) return;
+        const container = document.getElementById('orf-results-container');
+        if (!container) return;
 
-            if (orfs.length === 0) {
-                container.innerHTML = `<p>No ORFs found longer than ${this.minOrfLen} amino acids.</p>`;
-                return;
-            }
-
-            let html = `<h3>Found ${orfs.length} Open Reading Frames (ORFs >= ${this.minOrfLen} aa)</h3>`;
-            html += `<div style="max-height: 450px; overflow-y: auto;">`;
-            
-            orfs.forEach(orf => {
-                html += `
-                    <div class="card" style="margin-bottom: 1rem; padding: 1rem; background: var(--bg-primary);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                            <strong>${orf.id}</strong>
-                            <span class="badge" style="background: var(--bg-tertiary); padding: 0.2rem 0.5rem; border-radius: var(--radius-sm); font-size: 0.8rem;">
-                                Length: ${orf.lengthAa} AA
-                            </span>
-                        </div>
-                        <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
-                            Strand: ${orf.strand} | Frame: ${orf.frame > 0 ? '+' + orf.frame : orf.frame} | Biological Pos: ${orf.start} - ${orf.end} (1-based)
-                        </div>
-                        <div style="font-family: var(--font-mono); font-size: 0.8rem; background: var(--bg-secondary); padding: 0.5rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); max-height: 100px; overflow-y: auto; word-break: break-all;">
-                            ${orf.translation}
-                        </div>
-                    </div>
-                `;
-            });
-            html += `</div>`;
-            container.innerHTML = html;
-        } catch (error) {
-            console.error('Error finding ORFs:', error);
-            alert('Error finding ORFs: ' + error.message);
-        }
-    }
-
-    async handleSaveCurrentSample() {
-        if (!this.currentSequence) {
-            alert('No sequence currently analyzed to save.');
-            return;
-        }
-        if (!this.activeProject) {
-            this.activeProject = await createProject('Default Workspace');
-        }
-
-        try {
-            const saved = await saveSample(this.activeProject.id, {
-                name: this.currentSequence.name,
-                sequence: this.currentSequence.sequence,
-                type: this.currentValidation ? this.currentValidation.type : 'DNA',
-                stats: this.currentStats,
-                validation: this.currentValidation
-            });
-            alert(`Sample "${saved.name}" saved to project "${this.activeProject.name}" in IndexedDB.`);
-            this.loadProjectSamples();
-        } catch (e) {
-            console.error('Failed to save sample:', e);
-            alert('Failed to save sample: ' + e.message);
-        }
-    }
-
-    handleFindMotif() {
-        const pattern = document.getElementById('motif-input').value.trim();
-        const isRegex = document.getElementById('motif-regex').checked;
-        const container = document.getElementById('motif-results');
-        
-        let seq = this.currentSequence ? this.currentSequence.sequence : '';
-        if (!seq) {
-            alert('Please load an active sequence first.');
-            return;
-        }
-        if (!pattern) {
-            alert('Please enter a motif to search.');
-            return;
-        }
-
-        const results = findMotifs(seq, pattern, isRegex);
-        container.innerHTML = `<h4>Found ${results.length} matches for "${pattern}"</h4>`;
-        if (results.length > 0) {
-            let table = '<table class="data-table"><tr><th>#</th><th>Motif Found</th><th>Start (1-based)</th><th>End (1-based)</th><th>Strand</th></tr>';
-            results.slice(0, 50).forEach((m, idx) => {
-                table += `<tr><td>${idx + 1}</td><td style="font-family:var(--font-mono); font-weight:600;">${m.motif}</td><td>${m.start}</td><td>${m.end}</td><td>${m.strand}</td></tr>`;
-            });
-            table += '</table>';
-            container.innerHTML += table;
-            if (results.length > 50) container.innerHTML += `<p style="font-size:0.85rem; color:var(--text-muted);">Showing first 50 of ${results.length} matches.</p>`;
-        }
-    }
-
-    handleFindMutations() {
-        const ref = document.getElementById('mutation-ref').value.replace(/\s+/g, '');
-        const alt = document.getElementById('mutation-alt').value.replace(/\s+/g, '');
-        const container = document.getElementById('mutation-results');
-
-        if (!ref || !alt) {
-            alert('Please provide both reference and alternative sequences.');
-            return;
-        }
-
-        const res = compareAlignedSequences(ref, alt);
-        if (res.error) {
-            container.innerHTML = `<span style="color:#ef4444; font-weight:600;">${res.error}</span>`;
-            return;
-        }
-
-        let html = `<h4>Detected ${res.mutations.length} Mutations (Ref length: ${res.referenceBases} bp)</h4>`;
-        if (res.mutations.length === 0) {
-            html += '<p>Sequences are 100% identical. Zero mutations detected.</p>';
-        } else {
-            html += '<table class="data-table"><tr><th>Biological Pos (1-based)</th><th>Ref</th><th>Alt</th><th>Mutation Type</th><th>Consequence / Codon</th></tr>';
-            res.mutations.forEach(m => {
-                let codonDetail = '-';
-                if (m.codonInfo) {
-                    if (m.codonInfo.codonNumber) {
-                        codonDetail = `Codon ${m.codonInfo.codonNumber}: ${m.codonInfo.refCodon}(${m.codonInfo.refAa}) -> ${m.codonInfo.altCodon}(${m.codonInfo.altAa}) [${m.codonInfo.consequence}]`;
-                    } else {
-                        codonDetail = m.codonInfo.consequence;
-                    }
-                }
-                html += `<tr><td><strong>${m.biologicalPosition}</strong></td><td style="font-family:var(--font-mono); color:#ef4444;">${m.reference}</td><td style="font-family:var(--font-mono); color:#16a34a; font-weight:600;">${m.alternative}</td><td><span class="badge">${m.type}</span></td><td>${codonDetail}</td></tr>`;
-            });
-            html += '</table>';
-        }
-        container.innerHTML = html;
-    }
-
-    handleAnalyzePrimer() {
-        const seq = document.getElementById('primer-input').value.trim();
-        const container = document.getElementById('primer-results');
-        if (!seq) {
-            alert('Please enter a primer sequence.');
-            return;
-        }
-
-        const res = analyzePrimer(seq);
-        if (!res) {
-            container.innerHTML = '<span style="color:#ef4444;">Invalid primer sequence. Must contain valid nucleotides.</span>';
+        if (orfs.length === 0) {
+            container.innerHTML = `<div class="card" style="margin:0; background:var(--bg-secondary);"><p>No ORFs found meeting minimum length of ${this.minOrfLen} aa.</p></div>`;
             return;
         }
 
         container.innerHTML = `
-            <table class="data-table" style="max-width:500px;">
-                <tr><th>Length</th><td>${res.length} bp</td></tr>
-                <tr><th>GC Content</th><td>${res.gcPercent.toFixed(1)}%</td></tr>
-                <tr><th>Estimated Tm</th><td>${res.tmEstimate.toFixed(1)} °C</td></tr>
-                <tr><th>GC Clamp (3' end)</th><td>${res.hasGcClamp ? '✅ Present' : '❌ Absent'}</td></tr>
+            <h3>Detected Open Reading Frames (${orfs.length})</h3>
+            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">Minimum length threshold: ${this.minOrfLen} codons.</p>
+            <div style="overflow-x:auto;">
+                <table class="data-table" style="width:100%;">
+                    <thead>
+                        <tr><th>Frame</th><th>Start (1-based)</th><th>Stop (1-based)</th><th>Length (bp)</th><th>Length (aa)</th><th>Peptide Translation</th></tr>
+                    </thead>
+                    <tbody>
+                        ${orfs.map(o => `
+                            <tr>
+                                <td><span class="badge ${String(o.frame).startsWith('+') || o.frame > 0 ? 'badge-dna' : 'badge-rna'}">${o.frame}</span></td>
+                                <td>${o.start + 1}</td>
+                                <td>${o.end}</td>
+                                <td>${o.lengthBp}</td>
+                                <td><strong>${o.lengthAa}</strong></td>
+                                <td style="font-family:var(--font-mono); font-size:0.8rem; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${o.protein}">${o.protein}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    handleFindMotif() {
+        const query = document.getElementById('motif-input')?.value.trim();
+        if (!query) return alert('Please enter a motif query.');
+        if (!this.currentSequence) return alert('Please load a sequence first.');
+
+        const isRegex = document.getElementById('motif-regex')?.checked || false;
+        const matches = findMotifs(this.currentSequence.sequence, query, isRegex);
+        
+        const resDiv = document.getElementById('motif-results');
+        if (!resDiv) return;
+
+        if (matches.length === 0) {
+            resDiv.innerHTML = `<p style="color:var(--text-muted);">No matches found for motif "${query}".</p>`;
+            return;
+        }
+
+        resDiv.innerHTML = `
+            <h4>Found ${matches.length} Match${matches.length > 1 ? 'es' : ''}</h4>
+            <table class="data-table" style="width:100%; margin-top:0.75rem;">
+                <thead><tr><th>Position (1-based)</th><th>Length</th><th>Matched Subsequence</th></tr></thead>
+                <tbody>
+                    ${matches.map(m => `<tr><td>${m.start + 1}</td><td>${m.length}</td><td style="font-family:var(--font-mono);">${m.matchedSequence}</td></tr>`).join('')}
+                </tbody>
             </table>
         `;
     }
 
-    async handleRestrictionMap() {
-        const seq = this.currentSequence ? this.currentSequence.sequence : '';
-        const container = document.getElementById('restriction-results');
-        if (!seq) {
-            alert('Please load a nucleotide sequence first.');
-            return;
-        }
+    handleFindMutations() {
+        const ref = document.getElementById('mutation-ref')?.value.trim();
+        const alt = document.getElementById('mutation-alt')?.value.trim();
+        if (!ref || !alt) return alert('Please provide both reference and alternative sequences.');
 
-        const singleOnly = document.getElementById('chk-single-cutters').checked;
-        const sites = await findRestrictionSites(seq);
+        const diffs = compareAlignedSequences(ref, alt);
+        const resDiv = document.getElementById('mutation-results');
+        if (!resDiv) return;
+
+        resDiv.innerHTML = `
+            <h4>Detected Mutations (${diffs.length})</h4>
+            <table class="data-table" style="width:100%; margin-top:0.75rem;">
+                <thead><tr><th>1-based Coordinate</th><th>Type</th><th>Ref Base</th><th>Alt Base</th><th>Consequence</th></tr></thead>
+                <tbody>
+                    ${diffs.map(d => `
+                        <tr>
+                            <td><strong>${d.coordinate}</strong></td>
+                            <td><span class="badge ${d.type === 'Substitution' ? 'badge-dna' : 'badge-beta'}">${d.type}</span></td>
+                            <td style="font-family:var(--font-mono);">${d.refBase}</td>
+                            <td style="font-family:var(--font-mono);">${d.altBase}</td>
+                            <td>${d.consequence}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+
+    handleAnalyzePrimer() {
+        const primer = document.getElementById('primer-input')?.value.trim();
+        if (!primer) return alert('Please enter a primer sequence.');
+
+        const report = analyzePrimer(primer);
+        const resDiv = document.getElementById('primer-results');
+        if (!resDiv) return;
+
+        resDiv.innerHTML = `
+            <div class="card" style="margin:0; background:var(--bg-secondary);">
+                <h4>Oligonucleotide Primer Analysis</h4>
+                <table class="data-table" style="width:100%; margin-top:0.75rem;">
+                    <tr><th>Sequence (5' to 3')</th><td style="font-family:var(--font-mono);">${primer.toUpperCase()}</td></tr>
+                    <tr><th>Length</th><td>${report.length} nt</td></tr>
+                    <tr><th>GC Content</th><td>${report.gcPercent.toFixed(1)}%</td></tr>
+                    <tr><th>Melting Temp (Tm)</th><td><strong>${report.tmCelsius.toFixed(1)} °C</strong></td></tr>
+                    <tr><th>3' GC Clamp</th><td>${report.hasGcClamp ? '✅ Present (G/C at 3\' terminus)' : '❌ Absent (A/T at 3\' terminus)'}</td></tr>
+                </table>
+            </div>
+        `;
+    }
+
+    handleRestrictionMap() {
+        if (!this.currentSequence) return alert('Please load a nucleotide sequence first.');
+        const singleOnly = document.getElementById('chk-single-cutters')?.checked || false;
         
-        // Group by enzyme
-        const counts = {};
-        sites.forEach(s => counts[s.enzyme] = (counts[s.enzyme] || 0) + 1);
+        fetch('./data/restriction-enzymes.json').then(r => r.json()).then(enzymes => {
+            const cuts = findRestrictionSites(this.currentSequence.sequence, enzymes, singleOnly);
+            const resDiv = document.getElementById('restriction-results');
+            if (!resDiv) return;
 
-        const filtered = singleOnly ? sites.filter(s => counts[s.enzyme] === 1) : sites;
-
-        container.innerHTML = `<h4>Found ${filtered.length} Restriction Sites (${sites.length} total across all enzymes)</h4>`;
-        if (filtered.length > 0) {
-            let table = '<table class="data-table"><tr><th>Enzyme</th><th>Recognition</th><th>Cut Position (1-based)</th><th>Cut Frequency</th></tr>';
-            filtered.forEach(s => {
-                table += `<tr><td><strong>${s.enzyme}</strong></td><td style="font-family:var(--font-mono);">${s.recognition}</td><td>${s.cutSite} bp</td><td>${counts[s.enzyme]} cut(s)</td></tr>`;
-            });
-            table += '</table>';
-            container.innerHTML += table;
-        } else {
-            container.innerHTML += '<p>No matching restriction sites found.</p>';
-        }
+            resDiv.innerHTML = `
+                <h4>Restriction Digest Cleavage Sites (${cuts.length})</h4>
+                <table class="data-table" style="width:100%; margin-top:0.75rem;">
+                    <thead><tr><th>Enzyme</th><th>Recognition Site</th><th>Cut Position (1-based)</th><th>Overhang</th></tr></thead>
+                    <tbody>
+                        ${cuts.map(c => `<tr><td><strong>${c.enzyme}</strong></td><td style="font-family:var(--font-mono);">${c.pattern}</td><td>${c.cutPosition}</td><td>${c.overhang}</td></tr>`).join('')}
+                    </tbody>
+                </table>
+            `;
+        }).catch(err => {
+            console.error('Failed to load restriction enzymes:', err);
+            alert('Error loading enzyme database.');
+        });
     }
 
     handleSixFrameTranslation() {
-        const seq = this.currentSequence ? this.currentSequence.sequence : '';
-        const container = document.getElementById('translation-results');
-        if (!seq) {
-            alert('Please load a nucleotide sequence first.');
-            return;
-        }
+        if (!this.currentSequence) return alert('Please load a sequence first.');
+        const frames = translateSequence(this.currentSequence.sequence);
+        const resDiv = document.getElementById('translation-results');
+        if (!resDiv) return;
 
-        const rc = reverseComplement(seq);
-        const frames = [
-            { name: 'Frame +1', seq: translateSequence(seq, 1) },
-            { name: 'Frame +2', seq: translateSequence(seq, 2) },
-            { name: 'Frame +3', seq: translateSequence(seq, 3) },
-            { name: 'Frame -1', seq: translateSequence(rc, 1) },
-            { name: 'Frame -2', seq: translateSequence(rc, 2) },
-            { name: 'Frame -3', seq: translateSequence(rc, 3) }
-        ];
-
-        let html = '<div style="display:flex; flex-direction:column; gap:1rem;">';
-        frames.forEach(f => {
-            html += `
-                <div class="card" style="margin:0; padding:1rem; background:var(--bg-secondary);">
-                    <strong>${f.name}</strong> (${f.seq.length} aa)
-                    <div style="font-family:var(--font-mono); font-size:0.8rem; background:var(--bg-primary); padding:0.5rem; border-radius:var(--radius-sm); border:1px solid var(--border-color); margin-top:0.5rem; max-height:80px; overflow-y:auto; word-break:break-all;">
-                        ${f.seq}
-                    </div>
+        resDiv.innerHTML = Object.entries(frames).map(([frameName, peptide]) => `
+            <div class="card" style="margin:0 0 1rem 0; background:var(--bg-secondary);">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong>Frame ${frameName}</strong>
+                    <span style="font-size:0.8rem; color:var(--text-muted);">${peptide.length} aa</span>
                 </div>
-            `;
-        });
-        html += '</div>';
-        container.innerHTML = html;
+                <div style="font-family:var(--font-mono); font-size:0.85rem; word-break:break-all; margin-top:0.5rem; background:var(--bg-primary); padding:0.5rem; border-radius:var(--radius-sm); border:1px solid var(--border-color);">
+                    ${peptide}
+                </div>
+            </div>
+        `).join('');
     }
 
     handleCompareSequences() {
-        const s1 = document.getElementById('compare-1').value.replace(/\s+/g, '');
-        const s2 = document.getElementById('compare-2').value.replace(/\s+/g, '');
-        const container = document.getElementById('compare-results');
-
-        if (!s1 || !s2) {
-            alert('Please provide both sequences to compare.');
-            return;
-        }
+        const s1 = document.getElementById('compare-1')?.value.trim();
+        const s2 = document.getElementById('compare-2')?.value.trim();
+        if (!s1 || !s2) return alert('Please enter both sequences.');
 
         const res = calculateIdentity(s1, s2);
-        if (!res) {
-            container.innerHTML = '<span style="color:#ef4444;">Comparison error.</span>';
-            return;
-        }
+        const resDiv = document.getElementById('compare-results');
+        if (!resDiv) return;
 
-        container.innerHTML = `
-            <table class="data-table" style="max-width:500px;">
-                <tr><th>Pairwise Identity</th><td><strong style="color:var(--accent-primary); font-size:1.1rem;">${res.identityPercent.toFixed(2)}%</strong></td></tr>
-                <tr><th>Exact Matches</th><td>${res.matches}</td></tr>
-                <tr><th>Mismatches</th><td>${res.mismatches}</td></tr>
-                <tr><th>Gaps</th><td>${res.gaps}</td></tr>
-                <tr><th>Aligned Length</th><td>${res.alignmentLength}</td></tr>
-            </table>
+        resDiv.innerHTML = `
+            <div class="card" style="margin:0; background:var(--bg-secondary);">
+                <h4>Pairwise Sequence Comparison</h4>
+                <table class="data-table" style="width:100%; margin-top:0.75rem;">
+                    <tr><th>Pairwise Identity</th><td><strong style="color:var(--accent-primary); font-size:1.1rem;">${res.identityPercent.toFixed(2)}%</strong></td></tr>
+                    <tr><th>Exact Matches</th><td>${res.matches}</td></tr>
+                    <tr><th>Mismatches</th><td>${res.mismatches}</td></tr>
+                    <tr><th>Gaps</th><td>${res.gaps}</td></tr>
+                    <tr><th>Alignment Length</th><td>${res.alignmentLength}</td></tr>
+                </table>
+            </div>
         `;
     }
 
     handleRunBatch() {
-        const raw = document.getElementById('batch-input').value;
-        if (!raw.trim()) {
-            alert('Please enter or upload Multi-FASTA sequences.');
-            return;
-        }
+        const input = document.getElementById('batch-input')?.value.trim();
+        if (!input) return alert('Please enter Multi-FASTA sequences.');
 
-        const seqs = parseFasta(raw);
-        if (seqs.length === 0) {
-            alert('No valid sequences found in Multi-FASTA.');
-            return;
-        }
+        const results = processBatch(input);
+        this.batchResults = results;
 
-        this.batchResults = processBatch(seqs, calculateNucleotideStats, detectSequenceType, validateSequence);
-        this.renderBatchTable(this.batchResults);
+        const resDiv = document.getElementById('batch-results');
+        if (!resDiv) return;
 
-        const filterInput = document.getElementById('batch-filter');
-        const csvBtn = document.getElementById('btn-export-batch-csv');
-        if (filterInput) filterInput.style.display = 'inline-block';
-        if (csvBtn) csvBtn.style.display = 'inline-block';
-    }
+        document.getElementById('btn-export-batch-csv').style.display = 'inline-block';
+        document.getElementById('batch-filter').style.display = 'inline-block';
 
-    renderBatchTable(items) {
-        const container = document.getElementById('batch-results');
-        if (!container) return;
-
-        let tableHtml = `
-            <p><strong>Total Sequences in Batch:</strong> ${items.length}</p>
-            <table class="data-table" style="width:100%">
-                <thead>
-                    <tr>
-                        <th style="cursor:pointer;" id="th-batch-name">Name ⬍</th>
-                        <th>Type</th>
-                        <th style="cursor:pointer;" id="th-batch-length">Length ⬍</th>
-                        <th style="cursor:pointer;" id="th-batch-gc">GC% ⬍</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
+        resDiv.innerHTML = `
+            <table class="data-table" style="width:100%;">
+                <thead><tr><th>Sequence Name</th><th>Type</th><th>Length</th><th>GC %</th><th>Action</th></tr></thead>
+                <tbody id="batch-table-body">
+                    ${results.map((r, idx) => `
+                        <tr>
+                            <td><strong>${r.name}</strong></td>
+                            <td><span class="badge ${r.type === 'Protein' ? 'badge-protein' : 'badge-dna'}">${r.type}</span></td>
+                            <td>${r.length}</td>
+                            <td>${r.gcPercent ? r.gcPercent.toFixed(1) + '%' : 'N/A'}</td>
+                            <td><button class="btn secondary small btn-batch-load" data-idx="${idx}">Load to Workbench</button></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
         `;
 
-        items.forEach((r, idx) => {
-            tableHtml += `
-                <tr>
-                    <td><strong>${r.name}</strong></td>
-                    <td><span class="badge">${r.type}</span></td>
-                    <td>${r.length}</td>
-                    <td>${r.gcPercent ? r.gcPercent.toFixed(1) + '%' : '-'}</td>
-                    <td>${r.status}</td>
-                    <td><button class="btn-load-batch-item secondary small" data-idx="${idx}">Inspect</button></td>
-                </tr>
-            `;
-        });
-        tableHtml += '</tbody></table>';
-        container.innerHTML = tableHtml;
-
-        // Bind inspection buttons
-        document.querySelectorAll('.btn-load-batch-item').forEach(b => {
-            b.addEventListener('click', () => {
-                const idx = parseInt(b.getAttribute('data-idx'), 10);
-                const item = items[idx];
-                const mainInput = document.getElementById('main-sequence-input');
-                if (mainInput && item) {
-                    mainInput.value = `>${item.name}\n${item.sequence}`;
+        document.querySelectorAll('.btn-batch-load').forEach(btn => {
+            btn.onclick = () => {
+                const idx = parseInt(btn.getAttribute('data-idx'), 10);
+                const rec = this.batchResults[idx];
+                if (rec) {
+                    const mainInput = document.getElementById('main-sequence-input');
+                    if (mainInput) mainInput.value = `>${rec.name}\n${rec.sequence}`;
+                    navigateTo('home');
                     this.handleSequenceInput();
                 }
-            });
+            };
         });
-
-        // Sorting
-        const thLen = document.getElementById('th-batch-length');
-        if (thLen) {
-            thLen.addEventListener('click', () => {
-                items.sort((a, b) => b.length - a.length);
-                this.renderBatchTable(items);
-            });
-        }
-        const thGc = document.getElementById('th-batch-gc');
-        if (thGc) {
-            thGc.addEventListener('click', () => {
-                items.sort((a, b) => (b.gcPercent || 0) - (a.gcPercent || 0));
-                this.renderBatchTable(items);
-            });
-        }
     }
 
-    filterBatchTable(term) {
-        if (!this.batchResults) return;
-        const filtered = this.batchResults.filter(r => r.name.toLowerCase().includes(term.toLowerCase()));
-        this.renderBatchTable(filtered);
+    filterBatchTable(query) {
+        const q = query.toLowerCase();
+        document.querySelectorAll('#batch-table-body tr').forEach(row => {
+            const name = row.children[0]?.textContent.toLowerCase() || '';
+            row.style.display = name.includes(q) ? '' : 'none';
+        });
     }
 
     handleExportBatchCsv() {
         if (!this.batchResults || this.batchResults.length === 0) return;
-        let csv = 'Name,Type,Length,GC_Percent,Status\n';
+        let csv = 'Name,Type,Length,GC_Percent\n';
         this.batchResults.forEach(r => {
-            csv += `"${r.name.replace(/"/g, '""')}",${r.type},${r.length},${r.gcPercent || ''},${r.status}\n`;
+            csv += `"${r.name}","${r.type}",${r.length},${r.gcPercent ? r.gcPercent.toFixed(2) : ''}\n`;
         });
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'genetrace_batch_summary.csv';
+        a.download = 'GeneTrace_Batch_Analysis.csv';
         a.click();
-        URL.revokeObjectURL(url);
     }
 
     handleRunAlignment() {
-        const query = document.getElementById('align-query').value.replace(/\s+/g, '').toUpperCase();
-        const ref = document.getElementById('align-ref').value.replace(/\s+/g, '').toUpperCase();
-        if (!query || !ref) {
-            alert('Please provide both query and reference sequences.');
-            return;
+        const q = document.getElementById('align-query')?.value.trim();
+        const r = document.getElementById('align-ref')?.value.trim();
+        if (!q || !r) return alert('Please enter both Query and Reference sequences.');
+
+        const container = document.getElementById('alignment-results-container');
+        if (container) {
+            renderAlignment('alignment-results-container', q, r);
         }
-        renderAlignment('alignment-results-container', query, ref);
     }
 
     handleRenderTree() {
-        const newick = document.getElementById('newick-input').value.trim();
-        if (!newick) {
-            alert('Please provide a Newick string.');
-            return;
-        }
+        const newick = document.getElementById('newick-input')?.value.trim();
+        if (!newick) return alert('Please enter a Newick string.');
+
         try {
-            const treeData = parseNewick(newick);
-            renderSVGTree('tree-viewer-container', treeData);
-        } catch (e) {
-            console.error('Tree render error:', e);
-            alert('Failed to parse Newick tree: ' + e.message);
+            const tree = parseNewick(newick);
+            renderSVGTree('tree-viewer-container', tree);
+        } catch (err) {
+            alert('Failed to parse Newick tree: ' + err.message);
         }
     }
 
     async handleCreateProject() {
-        const nameInput = document.getElementById('new-project-name');
-        const descInput = document.getElementById('new-project-desc');
-        const name = nameInput.value.trim();
-        if (!name) {
-            alert('Please enter a project name.');
-            return;
-        }
+        const name = document.getElementById('new-project-name')?.value.trim();
+        const desc = document.getElementById('new-project-desc')?.value.trim();
+        if (!name) return alert('Project name is required.');
 
-        const proj = await createProject(name, descInput.value.trim());
-        this.activeProject = proj;
-        localStorage.setItem('genetrace_active_project_id', proj.id);
+        const p = await createProject(name, desc);
+        this.activeProject = p;
+        localStorage.setItem('genetrace_active_project_id', p.id);
         this.updateProjectHeader();
-        nameInput.value = '';
-        descInput.value = '';
-        alert(`Project "${proj.name}" created and set as active.`);
         this.loadProjectsList();
         this.loadProjectSamples();
+        alert(`Project "${p.name}" created!`);
     }
 
     async loadProjectsList() {
         const container = document.getElementById('projects-list-container');
         if (!container) return;
-
         const projects = await getAllProjects();
+
         if (projects.length === 0) {
-            container.innerHTML = '<p class="text-muted">No saved projects found.</p>';
+            container.innerHTML = '<p style="color:var(--text-muted);">No saved projects.</p>';
             return;
         }
 
-        let html = '<table class="data-table"><tr><th>Project Name</th><th>Created</th><th>Status</th><th>Actions</th></tr>';
-        projects.forEach(p => {
-            const isActive = this.activeProject && this.activeProject.id === p.id;
-            html += `
-                <tr>
-                    <td><strong>${p.name}</strong></td>
-                    <td>${new Date(p.createdAt).toLocaleDateString()}</td>
-                    <td>${isActive ? '<span class="badge" style="background:var(--accent-light); color:var(--accent-primary);">Active</span>' : 'Inactive'}</td>
-                    <td>
-                        <button class="btn-select-proj secondary small" data-id="${p.id}">Select</button>
-                        <button class="btn-delete-proj secondary small" data-id="${p.id}" style="color:#ef4444;">Delete</button>
-                    </td>
-                </tr>
-            `;
-        });
-        html += '</table>';
-        container.innerHTML = html;
+        container.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                ${projects.map(p => `
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; background:var(--bg-secondary); border-radius:var(--radius-md); border:1px solid ${p.id === this.activeProject?.id ? 'var(--accent-primary)' : 'var(--border-color)'};">
+                        <div>
+                            <strong>${p.name}</strong> ${p.id === this.activeProject?.id ? '<span class="badge badge-protein">Active</span>' : ''}
+                            <div style="font-size:0.8rem; color:var(--text-muted);">${p.description || 'No description'}</div>
+                        </div>
+                        <div style="display:flex; gap:0.5rem;">
+                            <button class="btn secondary small btn-proj-switch" data-id="${p.id}">Switch</button>
+                            <button class="btn ghost small btn-proj-del" data-id="${p.id}" style="color:var(--error);">Delete</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
 
-        container.querySelectorAll('.btn-select-proj').forEach(b => {
-            b.addEventListener('click', async () => {
-                const id = b.getAttribute('data-id');
-                this.activeProject = await getProject(id);
-                localStorage.setItem('genetrace_active_project_id', id);
-                this.updateProjectHeader();
-                this.loadProjectsList();
-                this.loadProjectSamples();
-            });
-        });
-
-        container.querySelectorAll('.btn-delete-proj').forEach(b => {
-            b.addEventListener('click', async () => {
-                const id = b.getAttribute('data-id');
-                if (confirm('Delete this project and all its samples?')) {
-                    await deleteProject(id);
-                    const projs = await getAllProjects();
-                    this.activeProject = projs.length > 0 ? projs[0] : null;
+        document.querySelectorAll('.btn-proj-switch').forEach(btn => {
+            btn.onclick = async () => {
+                const id = btn.getAttribute('data-id');
+                const matched = projects.find(x => x.id === id);
+                if (matched) {
+                    this.activeProject = matched;
+                    localStorage.setItem('genetrace_active_project_id', matched.id);
                     this.updateProjectHeader();
                     this.loadProjectsList();
                     this.loadProjectSamples();
                 }
-            });
+            };
+        });
+
+        document.querySelectorAll('.btn-proj-del').forEach(btn => {
+            btn.onclick = async () => {
+                const id = btn.getAttribute('data-id');
+                if (confirm('Delete this project and its samples?')) {
+                    await deleteProject(id);
+                    this.initDefaultProject();
+                }
+            };
         });
     }
 
     async loadProjectSamples() {
         const container = document.getElementById('project-samples-container');
-        if (!container) return;
-        if (!this.activeProject) {
-            container.innerHTML = '<p class="text-muted">No active project selected.</p>';
-            return;
-        }
-
+        if (!container || !this.activeProject) return;
         const samples = await getSamples(this.activeProject.id);
+
         if (samples.length === 0) {
-            container.innerHTML = '<p class="text-muted">No samples saved in this project yet.</p>';
+            container.innerHTML = '<p style="color:var(--text-muted);">No samples stored in active project.</p>';
             return;
         }
 
-        let html = '<table class="data-table"><tr><th>Sample Name</th><th>Type</th><th>Length</th><th>Saved At</th><th>Action</th></tr>';
-        samples.forEach(s => {
-            html += `
-                <tr>
-                    <td><strong>${s.name}</strong></td>
-                    <td><span class="badge">${s.type}</span></td>
-                    <td>${s.sequence ? s.sequence.length : '-'} bp</td>
-                    <td>${new Date(s.savedAt).toLocaleTimeString()}</td>
-                    <td>
-                        <button class="btn-load-samp primary small" data-id="${s.id}">Open in Workbench</button>
-                        <button class="btn-del-samp secondary small" data-id="${s.id}" style="color:#ef4444;">Delete</button>
-                    </td>
-                </tr>
-            `;
-        });
-        html += '</table>';
-        container.innerHTML = html;
+        container.innerHTML = `
+            <table class="data-table" style="width:100%;">
+                <thead><tr><th>Sample Name</th><th>Type</th><th>Length</th><th>Saved Date</th><th>Actions</th></tr></thead>
+                <tbody>
+                    ${samples.map(s => `
+                        <tr>
+                            <td><strong>${s.name}</strong></td>
+                            <td><span class="badge ${s.type === 'Protein' ? 'badge-protein' : 'badge-dna'}">${s.type}</span></td>
+                            <td>${s.sequence ? s.sequence.length : 0}</td>
+                            <td>${s.createdAt ? new Date(s.createdAt).toLocaleDateString() : 'N/A'}</td>
+                            <td>
+                                <button class="btn secondary small btn-sample-load" data-id="${s.id}">Load</button>
+                                <button class="btn ghost small btn-sample-del" data-id="${s.id}" style="color:var(--error);">Delete</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
 
-        container.querySelectorAll('.btn-load-samp').forEach(b => {
-            b.addEventListener('click', () => {
-                const id = b.getAttribute('data-id');
-                const sample = samples.find(s => s.id === id);
-                if (sample) {
-                    const input = document.getElementById('main-sequence-input');
-                    if (input) input.value = `>${sample.name}\n${sample.sequence}`;
+        document.querySelectorAll('.btn-sample-load').forEach(btn => {
+            btn.onclick = () => {
+                const id = btn.getAttribute('data-id');
+                const s = samples.find(x => x.id === id);
+                if (s) {
+                    const mainInput = document.getElementById('main-sequence-input');
+                    if (mainInput) mainInput.value = `>${s.name}\n${s.sequence}`;
+                    navigateTo('home');
                     this.handleSequenceInput();
                 }
-            });
+            };
         });
 
-        container.querySelectorAll('.btn-del-samp').forEach(b => {
-            b.addEventListener('click', async () => {
-                const id = b.getAttribute('data-id');
-                await deleteSample(id);
-                this.loadProjectSamples();
-            });
+        document.querySelectorAll('.btn-sample-del').forEach(btn => {
+            btn.onclick = async () => {
+                const id = btn.getAttribute('data-id');
+                if (confirm('Delete sample?')) {
+                    await deleteSample(id);
+                    this.loadProjectSamples();
+                }
+            };
         });
     }
 
     async handleExportProjectJson() {
-        if (!this.activeProject) {
-            alert('No active project to export.');
-            return;
-        }
-        const data = await exportProject(this.activeProject.id);
-        const jsonStr = JSON.stringify(data, null, 2);
-        const blob = new Blob([jsonStr], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
+        if (!this.activeProject) return alert('No active project.');
+        const json = await exportProject(this.activeProject.id);
+        const blob = new Blob([json], { type: 'application/json' });
         const a = document.createElement('a');
-        a.href = url;
+        a.href = URL.createObjectURL(blob);
         a.download = `GeneTrace_Project_${this.activeProject.name.replace(/\s+/g, '_')}.json`;
         a.click();
-        URL.revokeObjectURL(url);
     }
 
     handleImportProjectJson(e) {
         const file = e.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = async (ev) => {
             try {
@@ -1235,9 +1765,11 @@ ATGCGNATCRYTGWSKMBDHVNATCGATCG`;
         if (theme === 'dark') {
             document.body.classList.add('theme-dark');
             document.body.classList.remove('theme-light');
+            document.documentElement.setAttribute('data-theme', 'dark');
         } else {
             document.body.classList.add('theme-light');
             document.body.classList.remove('theme-dark');
+            document.documentElement.setAttribute('data-theme', 'light');
         }
     }
 
@@ -1259,65 +1791,9 @@ ATGCGNATCRYTGWSKMBDHVNATCGATCG`;
         }
         localStorage.setItem('genetrace_mode', mode);
     }
-
-    updateEvidenceBoard(seqObj, validation, stats) {
-        const board = document.getElementById('evidence-board');
-        if (!board) return;
-
-        let warningsHtml = '';
-        if (validation.warnings && validation.warnings.length > 0) {
-            warningsHtml = `
-                <div class="evidence-item warning" style="background:#fef3c7; border-left:4px solid #f59e0b; padding:0.5rem; margin-top:0.5rem; font-size:0.85rem; color:#92400e;">
-                    <strong>Warnings:</strong>
-                    <ul style="margin:0; padding-left:1.2rem;">
-                        ${validation.warnings.map(w => `<li>${w}</li>`).join('')}
-                    </ul>
-                </div>
-            `;
-        }
-
-        let statsHtml = '';
-        if (stats) {
-            if (validation.type === 'DNA' || validation.type === 'RNA') {
-                statsHtml = `
-                    <div class="evidence-item" style="margin-top:0.5rem;">
-                        <strong>GC Content:</strong> ${stats.gcPercentage.toFixed(1)}%<br>
-                        <strong>Est. MW (ssDNA):</strong> ${(stats.mwEstimateDa / 1000).toFixed(1)} kDa
-                    </div>
-                `;
-            } else if (validation.type === 'Protein') {
-                statsHtml = `
-                    <div class="evidence-item" style="margin-top:0.5rem;">
-                        <strong>Hydrophobic:</strong> ${(stats.hydrophobicFraction * 100).toFixed(1)}%<br>
-                        <strong>Est. MW:</strong> ${(stats.mwEstimateDa / 1000).toFixed(1)} kDa
-                    </div>
-                `;
-            }
-        }
-
-        board.innerHTML = `
-            <div class="evidence-item" style="margin-bottom:0.5rem;">
-                <strong>Sample:</strong> ${seqObj.name || 'Unnamed'}
-            </div>
-            <div class="evidence-item" style="margin-bottom:0.5rem;">
-                <strong>Integrity:</strong> <span style="color:#16a34a; font-weight:600;">${validation.label}</span>
-            </div>
-            <div class="evidence-item" style="margin-bottom:0.5rem;">
-                <strong>Detected Type:</strong> ${validation.type}
-            </div>
-            <div class="evidence-item" style="margin-bottom:0.5rem;">
-                <strong>Length:</strong> ${validation.length.toLocaleString()} ${validation.type === 'Protein' ? 'aa' : 'bp'}
-            </div>
-            ${statsHtml}
-            ${warningsHtml}
-            <div class="evidence-item" style="margin-top:0.75rem; padding-top:0.5rem; border-top:1px solid var(--border-color); font-size:0.75rem; color:var(--text-muted);">
-                🔒 <strong>Local Analysis:</strong> 100% Client-Side. Zero sequence data transmitted.
-            </div>
-        `;
-    }
 }
 
-// Initialize application when DOM is ready
+// Global initialization
 document.addEventListener('DOMContentLoaded', () => {
     window.GeneTrace = new GeneTraceApp();
 });

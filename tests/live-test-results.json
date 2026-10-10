@@ -1,0 +1,17 @@
+{
+  "urlTested": "https://probalsarpv-byte.github.io/GeneTrace/",
+  "consoleErrors": [],
+  "network404s": [],
+  "homepageLoaded": true,
+  "cssLoaded": true,
+  "jsLoaded": true,
+  "swRegistered": true,
+  "dnaAnalysisWorked": true,
+  "orfWorked": true,
+  "mutationWorked": true,
+  "batchWorked": true,
+  "persistenceWorked": true,
+  "reportWorked": true,
+  "darkModeWorked": true,
+  "mobileWorked": true
+}
