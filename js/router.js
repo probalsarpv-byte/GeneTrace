@@ -49,3 +49,7 @@ export function navigateTo(viewId) {
     // Dispatch custom navigation event for sub-modules to react
     window.dispatchEvent(new CustomEvent('genetrace:navigated', { detail: { viewId } }));
 }
+
+if (typeof window !== 'undefined') {
+    window.navigateTo = navigateTo;
+}

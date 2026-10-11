@@ -45,11 +45,17 @@ import { convertToPlainSequence, formatFastaOutput, convertAb1ToFasta } from './
 import { createSyntheticAB1, createSyntheticFastq } from './rawlab/demo-generator.js';
 
 import { analyzeAndRecommend, WORKFLOWS } from './smart-router/smart-router.js';
+import { DatabaseManager } from './search/database-manager.js';
+import { searchReferences, pairwiseAlign } from './search/reference-search.js';
+import { buildPhylogeneticTreeFromReferences } from './phylogeny/tree-builder.js';
+import { evaluateConfidence } from './identification/confidence-engine.js';
 import { SixteenSWorkflow } from './identification/sixteen-s.js';
+import { ArchaeaWorkflow } from './identification/archaea.js';
 import { ITSWorkflow } from './identification/its.js';
 import { EighteenSWorkflow } from './identification/eighteen-s.js';
 import { VirusWorkflow } from './identification/virus.js';
 import { UnknownSequenceInvestigator } from './identification/unknown.js';
+import { DEMO_SEQUENCES } from './identification/demo-sequences.js';
 import { EvidenceEngine } from './evidence/evidence-engine.js';
 
 import { OrganismViewer } from './visualization/organism-3d.js';
@@ -84,19 +90,24 @@ class GeneTraceApp {
             planStatus: 'active'
         };
 
-        // Subsystems
+        // Reference Database & Subsystems
+        this.dbManager = new DatabaseManager('data/reference');
         this.evidenceEngine = new EvidenceEngine();
         this.rawLabUI = new RawLabUI();
         this.authUI = new AuthUI();
         this.adminDashboard = new AdminDashboard();
         this.userDashboard = new UserDashboard();
         this.organismViewer = null;
+        this.idOrganismViewer = null;
         this.taxonomyPath = null;
-        this.sixteenS = new SixteenSWorkflow();
-        this.itsWorkflow = new ITSWorkflow();
-        this.eighteenS = new EighteenSWorkflow();
-        this.virusWorkflow = new VirusWorkflow();
-        this.unknownInvestigator = new UnknownSequenceInvestigator();
+        this.sixteenS = new SixteenSWorkflow(this.dbManager);
+        this.archaea = new ArchaeaWorkflow(this.dbManager);
+        this.itsWorkflow = new ITSWorkflow(this.dbManager);
+        this.eighteenS = new EighteenSWorkflow(this.dbManager);
+        this.virusWorkflow = new VirusWorkflow(this.dbManager);
+        this.unknownInvestigator = new UnknownSequenceInvestigator(this.dbManager);
+        this.currentIdentificationResult = null;
+        this.selectedCandidateIndex = 0;
 
         this.initUI();
         this.bindEvents();
@@ -379,6 +390,44 @@ class GeneTraceApp {
             });
         }
 
+        // Direct Raw Lab to Identification Handoffs
+        const btnAb1Id = document.getElementById('btn-ab1-identify');
+        if (btnAb1Id) {
+            btnAb1Id.addEventListener('click', async () => {
+                if (!this.rawLabUI.state.currentAB1) {
+                    const syntheticBuffer = createSyntheticAB1('AGAGTTTGATCCTGGCTCAGATTGAACGCTGGCGGCAGGCCTAACACATGCAAGTCGAACGGTAACAGGAAGAAGCTTGCTTCTTTGCTGACGAGTGGCGGACGGGTGAGTAATGTCTGGGAAACTGCCTGATGGAGGGGGATAACTACTGGAAACGGTAGCTAATACCGCATAACGTCGCAAGACCAAAGAGGGGGACCTTCGGGCCTCTTGCCATCGGATGTGCCCAGATGGGATTAGCTAGTAGGTGGGGTAACGGCTCACCTAGGCGACGATCCCTAGCTGGTCTGAGAGGATGACCAGCCACACTGGAACTGAGACACGGTCCAGACTCCTACGGGAGGCAGCAGTGGGGAATATTGCACAATGGGCGCAAGCCTGATGCAGCCATGCCGCGTGTATGAAGAAGGCCTTCGGGTTGTAAAGTACTTTCAGCGGGGAGGAAGGGAGTAAAGTTAATACCTTTGCTCATTGACGTTACCCGCAGAAGAAGCACCGGCTAACTCCGTGCCAGCAGCCGCGGTAATAC', 'Sanger_16S_Isolate_1');
+                    this.rawLabUI.state.currentAB1 = parseAB1(syntheticBuffer);
+                    this.rawLabUI.renderAB1Viewer();
+                }
+                const bounds = this.rawLabUI.state.chromatogramViewer ? this.rawLabUI.state.chromatogramViewer.getTrimBoundaries() : { start: 0, end: this.rawLabUI.state.currentAB1.basecalls.length };
+                const fasta = convertAb1ToFasta(this.rawLabUI.state.currentAB1, bounds.start, bounds.end, 'Sanger_Trace_Isolate');
+                const mainInput = document.getElementById('main-sequence-input');
+                if (mainInput) mainInput.value = fasta;
+                await this.handleSequenceInput(false);
+                navigateTo('analyze-identify');
+                await this.runIdentificationPipeline();
+            });
+        }
+
+        const btnFastqId = document.getElementById('btn-fastq-identify');
+        if (btnFastqId) {
+            btnFastqId.addEventListener('click', async () => {
+                if (!this.rawLabUI.state.currentFASTQ || this.rawLabUI.state.currentFASTQ.length === 0) {
+                    const demoFastqText = createSyntheticFastq();
+                    const reads = parseFastq(demoFastqText);
+                    this.rawLabUI.state.currentFASTQ = reads;
+                    this.rawLabUI.renderFASTQQCCharts(calculateFastqQC(reads));
+                }
+                const firstRead = this.rawLabUI.state.currentFASTQ[0];
+                const fasta = `>${firstRead.id || 'FASTQ_Read_1'}\n${firstRead.sequence}`;
+                const mainInput = document.getElementById('main-sequence-input');
+                if (mainInput) mainInput.value = fasta;
+                await this.handleSequenceInput(false);
+                navigateTo('analyze-identify');
+                await this.runIdentificationPipeline();
+            });
+        }
+
         // Converter Tab
         const btnConvStrip = document.getElementById('btn-conv-strip');
         if (btnConvStrip) {
@@ -412,17 +461,14 @@ class GeneTraceApp {
             btnRouterRe.addEventListener('click', () => this.runSmartRouter());
         }
 
-        // 16S Identification Events
+        // Identification Workflows
+        this.bindIdentificationHubEvents();
         this.bind16SEvents();
-        // ITS Fungal Events
+        this.bindArchaeaEvents();
         this.bindITSEvents();
-        // 18S Eukaryotic Events
         this.bind18SEvents();
-        // Virus Events
         this.bindVirusEvents();
-        // Unknown Sequence Events
         this.bindUnknownEvents();
-        // 3D Visualization Events
         this.bind3DEvents();
 
         // Nucleotide buttons
@@ -466,24 +512,19 @@ class GeneTraceApp {
             btnSaveProt.addEventListener('click', () => this.handleSaveCurrentSample());
         }
 
-        // NCBI BLAST buttons
-        const btnNucBlast = document.getElementById('btn-nuc-blast');
-        if (btnNucBlast) {
-            btnNucBlast.addEventListener('click', async () => {
-                if (!this.currentSequence) return;
-                const { createBlastForm } = await import('./external/blast.js');
-                const submit = createBlastForm('ncbi-blast-form-container-nuc', this.currentSequence.sequence, 'blastn');
-                if (submit) submit();
+        // GeneTrace in-app analysis buttons
+        const btnNucId = document.getElementById('btn-nuc-identify');
+        if (btnNucId) {
+            btnNucId.addEventListener('click', () => {
+                navigateTo('analyze-identify');
+                this.runIdentificationPipeline();
             });
         }
 
-        const btnProtBlast = document.getElementById('btn-prot-blast');
-        if (btnProtBlast) {
-            btnProtBlast.addEventListener('click', async () => {
-                if (!this.currentSequence) return;
-                const { createBlastForm } = await import('./external/blast.js');
-                const submit = createBlastForm('ncbi-blast-form-container-prot', this.currentSequence.sequence, 'blastp');
-                if (submit) submit();
+        const btnProtId = document.getElementById('btn-prot-identify');
+        if (btnProtId) {
+            btnProtId.addEventListener('click', () => {
+                navigateTo('vis-3d');
             });
         }
 
@@ -693,7 +734,9 @@ AGAGTTTGATCCTGGCTCAGGACGAACGCTGGCGGCGTGCCTAATACATGCAAGTCGAAC`;
             } else if (viewId === 'vis-3d') {
                 this.initOrganism3D();
             } else if (viewId === 'analyze-identify') {
-                this.runSmartRouter();
+                if (!this.currentIdentificationResult) {
+                    this.runIdentificationPipeline();
+                }
             }
         });
     }
@@ -719,17 +762,60 @@ AGAGTTTGATCCTGGCTCAGGACGAACGCTGGCGGCGTGCCTAATACATGCAAGTCGAAC`;
 
     getWorkflowViewId(recId) {
         const map = {
+            'sixteen-s': 'id-16s',
             '16S': 'id-16s',
+            'bacteria-16s': 'id-16s',
+            'archaea-16s': 'id-archaea',
             'ITS': 'id-its',
+            'its': 'id-its',
+            'fungi-its': 'id-its',
             '18S': 'id-18s',
+            'eighteen-s': 'id-18s',
+            'eukaryotes-18s': 'id-18s',
             'virus': 'id-virus',
+            'viruses': 'id-virus',
             'protein': 'analyze-protein',
             'unknown': 'id-unknown'
         };
         return map[recId] || 'analyze-identify';
     }
 
-    // 16S rRNA Identification Workflow
+    // Flagship Identification Hub Event Bindings
+    bindIdentificationHubEvents() {
+        const btnRun = document.getElementById('btn-run-identification');
+        if (btnRun) {
+            btnRun.addEventListener('click', () => this.runIdentificationPipeline());
+        }
+
+        const markerSelect = document.getElementById('id-marker-select');
+        if (markerSelect) {
+            markerSelect.addEventListener('change', () => {
+                if (this.currentSequence) {
+                    this.runIdentificationPipeline();
+                }
+            });
+        }
+
+        const btnTree = document.getElementById('btn-id-build-tree');
+        if (btnTree) {
+            btnTree.addEventListener('click', () => this.buildPhylogenyFromReferences());
+        }
+
+        const btnAddEvidence = document.getElementById('btn-id-add-evidence');
+        if (btnAddEvidence) {
+            btnAddEvidence.addEventListener('click', () => this.addIdentificationToEvidence());
+        }
+
+        const btnReport = document.getElementById('btn-id-view-report');
+        if (btnReport) {
+            btnReport.addEventListener('click', () => {
+                this.renderReport();
+                navigateTo('reports');
+            });
+        }
+    }
+
+    // 16S rRNA Bacterial Identification Workflow
     bind16SEvents() {
         const btnCopy = document.getElementById('btn-16s-copy-fasta');
         if (btnCopy) {
@@ -740,65 +826,55 @@ AGAGTTTGATCCTGGCTCAGGACGAACGCTGGCGGCGTGCCTAATACATGCAAGTCGAAC`;
             };
         }
 
-        const btnOpenNcbi = document.getElementById('btn-16s-open-ncbi');
-        if (btnOpenNcbi) {
-            btnOpenNcbi.onclick = () => {
-                const search = this.sixteenS.prepareSearch(this.currentSequence?.sequence || '');
-                window.open(search.getNCBIBlast16SUrl(), '_blank');
+        const btnSearch = document.getElementById('btn-16s-run-search');
+        if (btnSearch) {
+            btnSearch.onclick = async () => {
+                navigateTo('analyze-identify');
+                await this.runIdentificationPipeline('bacteria-16s');
             };
         }
 
         const btnDemo = document.getElementById('btn-16s-load-candidate-demo');
         if (btnDemo) {
-            btnDemo.onclick = () => {
-                document.getElementById('input-16s-acc').value = 'NR_024570.1';
-                document.getElementById('input-16s-org').value = 'Escherichia coli strain K-12';
-                document.getElementById('input-16s-ident').value = '99.8';
-                document.getElementById('input-16s-cov').value = '100';
+            btnDemo.onclick = async () => {
+                const demo = DEMO_SEQUENCES['bacteria-16s'];
+                const input = document.getElementById('main-sequence-input');
+                if (input) input.value = `>${demo.name}\n${demo.sequence}`;
+                await this.handleSequenceInput(false);
+                navigateTo('analyze-identify');
+                await this.runIdentificationPipeline('bacteria-16s');
+            };
+        }
+    }
+
+    // 16S rRNA Archaeal Identification Workflow
+    bindArchaeaEvents() {
+        const btnCopy = document.getElementById('btn-archaea-copy-fasta');
+        if (btnCopy) {
+            btnCopy.onclick = () => {
+                if (!this.currentSequence) return alert('No sequence loaded');
+                navigator.clipboard.writeText(`>${this.currentSequence.name}\n${this.currentSequence.sequence}`);
+                alert('Archaeal 16S FASTA copied to clipboard!');
             };
         }
 
-        const btnEval = document.getElementById('btn-16s-eval-candidate');
-        if (btnEval) {
-            btnEval.onclick = () => {
-                const acc = document.getElementById('input-16s-acc')?.value || 'NR_UNKNOWN';
-                const org = document.getElementById('input-16s-org')?.value || 'Unknown bacterium';
-                const ident = parseFloat(document.getElementById('input-16s-ident')?.value || '0');
-                const cov = parseFloat(document.getElementById('input-16s-cov')?.value || '0');
-
-                const candidate = { accession: acc, organism: org, identity: ident, coverage: cov };
-                const conf = this.sixteenS.assessConfidence([candidate]);
-
-                const resDiv = document.getElementById('sixteen-s-eval-result');
-                if (resDiv) {
-                    resDiv.innerHTML = `
-                        <div class="card" style="margin:0; background:var(--bg-secondary); border-left:4px solid var(--accent-primary);">
-                            <h4>Taxonomic Assignment Assessment</h4>
-                            <p><strong>Candidate:</strong> ${candidate.organism} (<em>${candidate.accession}</em>)</p>
-                            <p><strong>Identity:</strong> ${candidate.identity}% | <strong>Coverage:</strong> ${candidate.coverage}%</p>
-                            <p><strong>Confidence Tier:</strong> <span class="badge ${conf.level === 'MODERATE' ? 'badge-protein' : 'badge-beta'}">${conf.level}</span></p>
-                            <p style="font-size:0.85rem; color:var(--text-secondary); margin-top:0.5rem;">${conf.note}</p>
-                        </div>
-                    `;
-                }
+        const btnSearch = document.getElementById('btn-archaea-run-search');
+        if (btnSearch) {
+            btnSearch.onclick = async () => {
+                navigateTo('analyze-identify');
+                await this.runIdentificationPipeline('archaea-16s');
             };
         }
 
-        const btnAddEv = document.getElementById('btn-16s-add-evidence');
-        if (btnAddEv) {
-            btnAddEv.onclick = () => {
-                const org = document.getElementById('input-16s-org')?.value || 'Escherichia coli';
-                const ident = parseFloat(document.getElementById('input-16s-ident')?.value || '99.8');
-                this.evidenceEngine.addEvidence(
-                    'TAXONOMIC_CONSISTENCY',
-                    `16S Alignment: ${org} (${ident}% ID)`,
-                    '16S rRNA Marker',
-                    ident >= 99.0 ? 'STRONG' : 'MODERATE',
-                    'High identity to reference type strain.',
-                    'Requires polyphasic validation for definitive species confirmation.'
-                );
-                this.evidenceEngine.renderEvidenceBoard('evidence-board');
-                alert('Added to Evidence Board!');
+        const btnDemo = document.getElementById('btn-archaea-load-demo');
+        if (btnDemo) {
+            btnDemo.onclick = async () => {
+                const demo = DEMO_SEQUENCES['archaea-16s'];
+                const input = document.getElementById('main-sequence-input');
+                if (input) input.value = `>${demo.name}\n${demo.sequence}`;
+                await this.handleSequenceInput(false);
+                navigateTo('analyze-identify');
+                await this.runIdentificationPipeline('archaea-16s');
             };
         }
     }
@@ -814,168 +890,87 @@ AGAGTTTGATCCTGGCTCAGGACGAACGCTGGCGGCGTGCCTAATACATGCAAGTCGAAC`;
             };
         }
 
-        const btnOpenNcbi = document.getElementById('btn-its-open-ncbi');
-        if (btnOpenNcbi) {
-            btnOpenNcbi.onclick = () => {
-                window.open('https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&DATABASE=ITS_RefSeq_Fungi', '_blank');
+        const btnSearch = document.getElementById('btn-its-run-search');
+        if (btnSearch) {
+            btnSearch.onclick = async () => {
+                navigateTo('analyze-identify');
+                await this.runIdentificationPipeline('fungi-its');
             };
         }
 
         const btnDemo = document.getElementById('btn-its-load-candidate-demo');
         if (btnDemo) {
-            btnDemo.onclick = () => {
-                document.getElementById('input-its-acc').value = 'NR_111007.1';
-                document.getElementById('input-its-org').value = 'Saccharomyces cerevisiae';
-                document.getElementById('input-its-ident').value = '99.5';
-                document.getElementById('input-its-cov').value = '98.0';
-            };
-        }
-
-        const btnEval = document.getElementById('btn-its-eval-candidate');
-        if (btnEval) {
-            btnEval.onclick = () => {
-                const acc = document.getElementById('input-its-acc')?.value;
-                const org = document.getElementById('input-its-org')?.value;
-                const ident = parseFloat(document.getElementById('input-its-ident')?.value || '0');
-                const cov = parseFloat(document.getElementById('input-its-cov')?.value || '0');
-
-                const candidate = { accession: acc, organism: org, identity: ident, coverage: cov };
-                const conf = this.itsWorkflow.assessConfidence([candidate]);
-
-                const resDiv = document.getElementById('its-eval-result');
-                if (resDiv) {
-                    resDiv.innerHTML = `
-                        <div class="card" style="margin:0; background:var(--bg-secondary); border-left:4px solid var(--accent-primary);">
-                            <h4>Fungal Barcode Assessment</h4>
-                            <p><strong>Candidate:</strong> ${candidate.organism} (${candidate.accession})</p>
-                            <p><strong>Identity:</strong> ${candidate.identity}% | <strong>Coverage:</strong> ${candidate.coverage}%</p>
-                            <p><strong>Confidence:</strong> <span class="badge badge-protein">${conf.level}</span></p>
-                            <p style="font-size:0.85rem; color:var(--text-secondary);">${conf.reasoning || 'Fungal species delimitation requires morphological and multi-locus corroboration.'}</p>
-                        </div>
-                    `;
-                }
-            };
-        }
-
-        const btnAddEv = document.getElementById('btn-its-add-evidence');
-        if (btnAddEv) {
-            btnAddEv.onclick = () => {
-                const org = document.getElementById('input-its-org')?.value || 'Saccharomyces cerevisiae';
-                const ident = parseFloat(document.getElementById('input-its-ident')?.value || '99.5');
-                this.evidenceEngine.addEvidence(
-                    'TAXONOMIC_CONSISTENCY',
-                    `ITS Fungal Match: ${org} (${ident}% ID)`,
-                    'ITS Barcode',
-                    ident >= 99.0 ? 'STRONG' : 'MODERATE',
-                    'Fungal species identification supported by nuclear ribosomal ITS.',
-                    'Species complexes may share identical ITS alleles.'
-                );
-                this.evidenceEngine.renderEvidenceBoard('evidence-board');
-                alert('Added to Evidence Board!');
+            btnDemo.onclick = async () => {
+                const demo = DEMO_SEQUENCES['fungi-its'];
+                const input = document.getElementById('main-sequence-input');
+                if (input) input.value = `>${demo.name}\n${demo.sequence}`;
+                await this.handleSequenceInput(false);
+                navigateTo('analyze-identify');
+                await this.runIdentificationPipeline('fungi-its');
             };
         }
     }
 
     // 18S Eukaryotic Events
     bind18SEvents() {
+        const btnCopy = document.getElementById('btn-18s-copy-fasta');
+        if (btnCopy) {
+            btnCopy.onclick = () => {
+                if (!this.currentSequence) return alert('No sequence loaded');
+                navigator.clipboard.writeText(`>${this.currentSequence.name}\n${this.currentSequence.sequence}`);
+                alert('18S FASTA copied!');
+            };
+        }
+
+        const btnSearch = document.getElementById('btn-18s-run-search');
+        if (btnSearch) {
+            btnSearch.onclick = async () => {
+                navigateTo('analyze-identify');
+                await this.runIdentificationPipeline('eukaryotes-18s');
+            };
+        }
+
         const btnDemo = document.getElementById('btn-18s-load-demo');
         if (btnDemo) {
-            btnDemo.onclick = () => {
-                document.getElementById('input-18s-acc').value = 'NR_044700.1';
-                document.getElementById('input-18s-org').value = 'Tetrahymena thermophila';
-                document.getElementById('input-18s-ident').value = '99.2';
-                document.getElementById('input-18s-cov').value = '97.5';
-            };
-        }
-
-        const btnEval = document.getElementById('btn-18s-eval');
-        if (btnEval) {
-            btnEval.onclick = () => {
-                const org = document.getElementById('input-18s-org')?.value;
-                const ident = parseFloat(document.getElementById('input-18s-ident')?.value || '0');
-                const conf = this.eighteenS.assessConfidence([{ organism: org, identity: ident }]);
-
-                const resDiv = document.getElementById('eighteen-s-eval-result');
-                if (resDiv) {
-                    resDiv.innerHTML = `
-                        <div class="card" style="margin:0; background:var(--bg-secondary); border-left:4px solid var(--accent-primary);">
-                            <h4>Eukaryotic 18S Assessment</h4>
-                            <p><strong>Organism:</strong> ${org} (${ident}% Identity)</p>
-                            <p><strong>Confidence:</strong> <span class="badge badge-protein">${conf.level}</span></p>
-                            <p style="font-size:0.85rem; color:var(--text-secondary);">${conf.reasoning || 'Genus-level resolution supported.'}</p>
-                        </div>
-                    `;
-                }
-            };
-        }
-
-        const btnAddEv = document.getElementById('btn-18s-add-evidence');
-        if (btnAddEv) {
-            btnAddEv.onclick = () => {
-                const org = document.getElementById('input-18s-org')?.value || 'Tetrahymena thermophila';
-                const ident = parseFloat(document.getElementById('input-18s-ident')?.value || '99.2');
-                this.evidenceEngine.addEvidence(
-                    'TAXONOMIC_CONSISTENCY',
-                    `18S Eukaryotic Match: ${org} (${ident}% ID)`,
-                    '18S rRNA',
-                    ident >= 99.0 ? 'MODERATE' : 'WEAK',
-                    'Microeukaryotic placement determined.',
-                    '18S provides lower species-level discrimination than ITS.'
-                );
-                this.evidenceEngine.renderEvidenceBoard('evidence-board');
-                alert('Added to Evidence Board!');
+            btnDemo.onclick = async () => {
+                const demo = DEMO_SEQUENCES['eukaryotes-18s'];
+                const input = document.getElementById('main-sequence-input');
+                if (input) input.value = `>${demo.name}\n${demo.sequence}`;
+                await this.handleSequenceInput(false);
+                navigateTo('analyze-identify');
+                await this.runIdentificationPipeline('eukaryotes-18s');
             };
         }
     }
 
     // Virus Events
     bindVirusEvents() {
+        const btnCopy = document.getElementById('btn-virus-copy-fasta');
+        if (btnCopy) {
+            btnCopy.onclick = () => {
+                if (!this.currentSequence) return alert('No sequence loaded');
+                navigator.clipboard.writeText(`>${this.currentSequence.name}\n${this.currentSequence.sequence}`);
+                alert('Viral FASTA copied!');
+            };
+        }
+
+        const btnSearch = document.getElementById('btn-virus-run-search');
+        if (btnSearch) {
+            btnSearch.onclick = async () => {
+                navigateTo('analyze-identify');
+                await this.runIdentificationPipeline('viruses');
+            };
+        }
+
         const btnDemo = document.getElementById('btn-virus-load-demo');
         if (btnDemo) {
-            btnDemo.onclick = () => {
-                document.getElementById('input-virus-acc').value = 'NC_001416.1';
-                document.getElementById('input-virus-org').value = 'Enterobacteria phage lambda';
-                document.getElementById('input-virus-ident').value = '96.5';
-                document.getElementById('input-virus-cov').value = '92.0';
-            };
-        }
-
-        const btnEval = document.getElementById('btn-virus-eval');
-        if (btnEval) {
-            btnEval.onclick = () => {
-                const org = document.getElementById('input-virus-org')?.value;
-                const ident = parseFloat(document.getElementById('input-virus-ident')?.value || '0');
-                const conf = this.virusWorkflow.assessConfidence([{ organism: org, identity: ident }]);
-
-                const resDiv = document.getElementById('virus-eval-result');
-                if (resDiv) {
-                    resDiv.innerHTML = `
-                        <div class="card" style="margin:0; background:var(--bg-secondary); border-left:4px solid var(--accent-primary);">
-                            <h4>Viral Homology Evaluation</h4>
-                            <p><strong>Viral Match:</strong> ${org} (${ident}% Identity)</p>
-                            <p><strong>Confidence:</strong> <span class="badge badge-beta">${conf.level}</span></p>
-                            <p style="font-size:0.85rem; color:var(--text-secondary);">${conf.reasoning || 'Family/genus viral classification suggested.'}</p>
-                        </div>
-                    `;
-                }
-            };
-        }
-
-        const btnAddEv = document.getElementById('btn-virus-add-evidence');
-        if (btnAddEv) {
-            btnAddEv.onclick = () => {
-                const org = document.getElementById('input-virus-org')?.value || 'Enterobacteria phage lambda';
-                const ident = parseFloat(document.getElementById('input-virus-ident')?.value || '96.5');
-                this.evidenceEngine.addEvidence(
-                    'TAXONOMIC_CONSISTENCY',
-                    `Viral Match: ${org} (${ident}% ID)`,
-                    'Viral Homology',
-                    'MODERATE',
-                    'High divergence typical in viral genomics; family-level placement supported.',
-                    'Strictly non-clinical educational research screening.'
-                );
-                this.evidenceEngine.renderEvidenceBoard('evidence-board');
-                alert('Added to Evidence Board!');
+            btnDemo.onclick = async () => {
+                const demo = DEMO_SEQUENCES['viruses'];
+                const input = document.getElementById('main-sequence-input');
+                if (input) input.value = `>${demo.name}\n${demo.sequence}`;
+                await this.handleSequenceInput(false);
+                navigateTo('analyze-identify');
+                await this.runIdentificationPipeline('viruses');
             };
         }
     }
@@ -984,49 +979,467 @@ AGAGTTTGATCCTGGCTCAGGACGAACGCTGGCGGCGTGCCTAATACATGCAAGTCGAAC`;
     bindUnknownEvents() {
         const btnRun = document.getElementById('btn-run-unknown-investigate');
         if (btnRun) {
-            btnRun.onclick = () => {
+            btnRun.onclick = async () => {
+                if (!this.currentSequence) {
+                    await this.handleSequenceInput(false);
+                }
                 if (!this.currentSequence) return alert('Please load a sequence in the Home tab first.');
                 
-                const report = this.unknownInvestigator.investigate(
-                    this.currentSequence,
-                    this.currentValidation,
-                    this.currentStats,
-                    { hasSubstantialOrfs: this.currentOrfs && this.currentOrfs.length > 0 }
-                );
-
-                const container = document.getElementById('unknown-pipeline-container');
-                if (container) {
-                    container.innerHTML = `
-                        <div class="card" style="margin:0; background:var(--bg-secondary);">
-                            <h3>Diagnostic Investigation Summary</h3>
-                            
-                            <h4 style="margin-top:1.5rem; color:var(--accent-primary);">1. Empirical Observations (Verified Facts)</h4>
-                            <table class="data-table" style="width:100%; margin-top:0.5rem;">
-                                <tr><th>Input Type</th><td>${report.observed.type}</td></tr>
-                                <tr><th>Length</th><td>${report.observed.length} ${report.observed.type === 'Protein' ? 'aa' : 'bp'}</td></tr>
-                                <tr><th>GC Content</th><td>${report.observed.gc}%</td></tr>
-                                <tr><th>Coding Potential</th><td>${report.observed.codingTendency} (${report.observed.orfCount} detected ORFs)</td></tr>
-                                <tr><th>Conserved Motifs</th><td>${report.observed.markerClues.length > 0 ? report.observed.markerClues.join(', ') : 'None detected'}</td></tr>
-                            </table>
-
-                            <h4 style="margin-top:1.5rem; color:var(--accent-primary);">2. Biological Interpretation (Hypothesis)</h4>
-                            <div style="background:var(--bg-tertiary); padding:1rem; border-radius:var(--radius-md); margin-top:0.5rem;">
-                                <p><strong>Most Likely Class:</strong> ${report.interpretation.likelyCategory}</p>
-                                <p style="font-size:0.85rem; color:var(--text-secondary); margin-top:0.25rem;">${report.interpretation.reasoning}</p>
-                            </div>
-
-                            <h4 style="margin-top:1.5rem; color:var(--accent-primary);">3. Recommended Next Step</h4>
-                            <p style="margin-top:0.5rem;">${report.recommendedNextStep.description}</p>
-
-                            <h4 style="margin-top:1.5rem; color:var(--warning);">4. Scientific Limitations</h4>
-                            <ul style="font-size:0.85rem; color:var(--text-secondary); padding-left:1.2rem; margin-top:0.5rem;">
-                                ${report.limitations.map(l => `<li>${l}</li>`).join('')}
-                            </ul>
-                        </div>
-                    `;
-                }
+                navigateTo('analyze-identify');
+                await this.runIdentificationPipeline('auto');
             };
         }
+    }
+
+    // GeneTrace Reference Search & Identification Engine
+    async runIdentificationPipeline(preferredMarker = null) {
+        if (this.isIdentifying) return;
+        this.isIdentifying = true;
+        try {
+            if (!this.currentSequence) {
+                const inputVal = document.getElementById('main-sequence-input')?.value.trim();
+                if (inputVal) {
+                    await this.handleSequenceInput(false);
+                } else {
+                    // Load E. coli default
+                    const demo = DEMO_SEQUENCES['bacteria-16s'];
+                    const input = document.getElementById('main-sequence-input');
+                    if (input) input.value = `>${demo.name}\n${demo.sequence}`;
+                    await this.handleSequenceInput(false);
+                }
+            }
+
+            if (!this.currentSequence) return;
+
+            const seq = this.currentSequence.sequence;
+            const seqName = this.currentSequence.name || 'Query_Sample';
+
+            // Update active sequence display header
+            const nameDisp = document.getElementById('id-seq-name-display');
+            const lenDisp = document.getElementById('id-seq-len-display');
+            const gcDisp = document.getElementById('id-seq-gc-display');
+            const typeDisp = document.getElementById('id-seq-type-display');
+            const statusDisp = document.getElementById('id-engine-status');
+
+            if (nameDisp) nameDisp.textContent = `Active Query: ${seqName}`;
+            if (lenDisp) lenDisp.textContent = `${seq.length} bp`;
+            if (gcDisp) gcDisp.textContent = `GC: ${(this.currentStats?.gcPercent || 50).toFixed(1)}%`;
+            if (typeDisp) typeDisp.textContent = this.currentValidation?.type || 'DNA';
+            if (statusDisp) {
+                statusDisp.innerHTML = `<span class="status-dot green"></span> Aligning against reference database...`;
+            }
+
+            // Determine marker
+            const markerSelect = document.getElementById('id-marker-select');
+            let marker = preferredMarker || (markerSelect ? markerSelect.value : 'auto');
+            if (preferredMarker && markerSelect) {
+                markerSelect.value = preferredMarker;
+            }
+
+            let chosenCategory = marker;
+            if (marker === 'auto') {
+                const recommendation = analyzeAndRecommend(seq, this.currentStats);
+                const recId = recommendation.recommendedWorkflow?.id || 'sixteen-s';
+                const categoryMap = {
+                    'sixteen-s': 'bacteria-16s',
+                    'its': 'fungi-its',
+                    'eighteen-s': 'eukaryotes-18s',
+                    'virus': 'viruses',
+                    'unknown': 'bacteria-16s'
+                };
+                chosenCategory = categoryMap[recId] || 'bacteria-16s';
+            }
+
+            const candContainer = document.getElementById('id-candidates-container');
+            if (candContainer) {
+                candContainer.innerHTML = `
+                    <div style="padding:2rem; text-align:center; color:var(--text-muted);">
+                        <div style="margin-bottom:0.5rem; font-size:1.1rem;">⏳ Aligning against ${chosenCategory} reference database...</div>
+                        <div style="font-size:0.85rem;">Executing dynamic programming semi-global pairwise alignment</div>
+                    </div>
+                `;
+            }
+
+            const refs = await this.dbManager.loadMarkerGroup(chosenCategory);
+            if (!refs || refs.length === 0) {
+                if (candContainer) {
+                    candContainer.innerHTML = `<div style="padding:1.5rem; color:var(--warning); text-align:center;">No reference records found for ${chosenCategory}.</div>`;
+                }
+                return;
+            }
+
+            const candidates = searchReferences(seq, refs, { topN: 6 });
+            const confidence = evaluateConfidence({
+                sequenceObj: this.currentSequence,
+                stats: this.currentStats,
+                suitability: { suitabilityScore: 95 },
+                candidates,
+                markerType: chosenCategory
+            });
+
+            this.currentIdentificationResult = {
+                sequence: this.currentSequence,
+                markerCategory: chosenCategory,
+                candidates,
+                confidence,
+                refs,
+                topCandidate: candidates[0] || null
+            };
+            this.selectedCandidateIndex = 0;
+
+            if (statusDisp) {
+                statusDisp.innerHTML = `<span class="status-dot green"></span> Reference Engine: ${candidates.length} match(es) identified in ${chosenCategory}`;
+            }
+
+            this.renderIdentificationResults(this.currentIdentificationResult);
+        } catch (err) {
+            console.error('Identification pipeline execution error:', err);
+            const candContainer = document.getElementById('id-candidates-container');
+            if (candContainer) {
+                candContainer.innerHTML = `<div style="padding:1.5rem; color:var(--danger); text-align:center;">Alignment error: ${err.message}</div>`;
+            }
+        } finally {
+            this.isIdentifying = false;
+        }
+    }
+
+    renderIdentificationResults(result) {
+        if (!result) return;
+
+        // 1. Left Column: Query Profile
+        const profileContainer = document.getElementById('id-query-profile-content');
+        if (profileContainer) {
+            profileContainer.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                    <div><strong>Sequence:</strong> ${result.sequence.name || 'Query_Sample'}</div>
+                    <div><strong>Length:</strong> ${result.sequence.sequence.length} bp</div>
+                    <div><strong>GC Content:</strong> ${(this.currentStats?.gcPercent || 50).toFixed(1)}%</div>
+                    <div><strong>IUPAC Ambiguity:</strong> ${(this.currentStats?.ambiguousPercent || 0).toFixed(2)}%</div>
+                    <div><strong>Locus / Category:</strong> <span class="badge" style="background:var(--accent-light); color:var(--accent-primary); font-size:0.75rem;">${result.markerCategory}</span></div>
+                </div>
+            `;
+        }
+
+        // 2. Left Column: Candidate Table
+        const countBadge = document.getElementById('id-candidate-count-badge');
+        if (countBadge) countBadge.textContent = `${result.candidates.length} candidate(s)`;
+
+        const candContainer = document.getElementById('id-candidates-container');
+        if (candContainer) {
+            if (result.candidates.length === 0) {
+                candContainer.innerHTML = `
+                    <div style="padding:1.5rem; text-align:center; color:var(--warning); border:1px dashed var(--border-color); border-radius:var(--radius-md);">
+                        No reference sequence matched above the minimum 70% identity threshold.
+                    </div>
+                `;
+            } else {
+                candContainer.innerHTML = `
+                    <table class="data-table id-candidates-table" style="width:100%; font-size:0.85rem; border-collapse:collapse;">
+                        <thead>
+                            <tr style="border-bottom:1px solid var(--border-color); text-align:left;">
+                                <th style="padding:6px 8px; width:28px;">#</th>
+                                <th style="padding:6px 8px;">Organism / Taxon</th>
+                                <th style="padding:6px 8px;">Identity</th>
+                                <th style="padding:6px 8px;">Coverage</th>
+                                <th style="padding:6px 8px;">Score</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${result.candidates.map((c, idx) => `
+                                <tr class="${idx === this.selectedCandidateIndex ? 'active-candidate' : ''}" data-cand-idx="${idx}" style="cursor:pointer; border-bottom:1px solid var(--border-color);">
+                                    <td style="padding:6px 8px;"><strong>${c.rank}</strong></td>
+                                    <td style="padding:6px 8px;">
+                                        <strong><em>${c.organism}</em></strong>
+                                        <div style="font-size:0.72rem; color:var(--text-muted);">${c.accession} | ${c.marker}</div>
+                                    </td>
+                                    <td style="padding:6px 8px;"><strong style="color:${c.identity >= 99 ? 'var(--success)' : (c.identity >= 98 ? 'var(--accent-primary)' : 'var(--text-primary)')};">${c.identity}%</strong></td>
+                                    <td style="padding:6px 8px;">${c.coverage}%</td>
+                                    <td style="padding:6px 8px;">${c.score}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+
+                candContainer.querySelectorAll('tr[data-cand-idx]').forEach(tr => {
+                    tr.addEventListener('click', () => {
+                        const idx = parseInt(tr.getAttribute('data-cand-idx'), 10);
+                        this.selectCandidate(idx);
+                    });
+                });
+            }
+        }
+
+        // Render detail for active candidate
+        const activeCand = result.candidates[this.selectedCandidateIndex] || result.topCandidate;
+        this.renderCandidateDetail(activeCand);
+    }
+
+    renderCandidateDetail(cand) {
+        // 1. Center Column: Probable ID Card
+        const probableCard = document.getElementById('id-probable-card');
+        const probableContent = document.getElementById('id-probable-content');
+        if (probableContent) {
+            if (!cand) {
+                probableContent.innerHTML = `
+                    <div style="padding:2rem; text-align:center; color:var(--text-muted);">
+                        <p style="font-size:1.1rem; color:var(--warning);">⚠️ Insufficient Evidence</p>
+                        <p style="font-size:0.9rem;">No candidate match exceeded similarity thresholds in this marker category.</p>
+                    </div>
+                `;
+            } else {
+                probableContent.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
+                        <div>
+                            <span style="font-size:0.8rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); font-weight:600;">Probable Identification & Top Match</span>
+                            <h3 style="margin:0.25rem 0 0 0; font-size:1.45rem; color:var(--text-primary);">
+                                <em>${cand.organism}</em>
+                            </h3>
+                            <div style="display:flex; gap:0.5rem; align-items:center; margin-top:0.5rem; flex-wrap:wrap;">
+                                <span class="badge" style="background:var(--bg-tertiary); font-weight:600;">NCBI RefSeq: ${cand.accession}</span>
+                                <span class="badge" style="background:${cand.identity >= 99 ? 'var(--success)' : 'var(--accent-primary)'}; color:#fff; font-weight:700;">${cand.identity}% Match</span>
+                                <span class="badge badge-beta" style="font-weight:700;">${this.currentIdentificationResult?.confidence?.level || 'EVALUATED'}</span>
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <span style="font-size:0.8rem; color:var(--text-muted);">Alignment Score</span>
+                            <div style="font-size:1.3rem; font-weight:700; color:var(--accent-primary);">${cand.score}</div>
+                        </div>
+                    </div>
+                    <div style="background:var(--bg-secondary); padding:0.75rem 1rem; border-radius:var(--radius-md); font-size:0.85rem; line-height:1.5; margin-top:1rem;">
+                        <div><strong>Taxonomy:</strong> ${cand.taxonomy?.genus || ''} ${cand.taxonomy?.species || ''} (Family: ${cand.taxonomy?.family || 'N/A'}, Phylum: ${cand.taxonomy?.phylum || 'N/A'})</div>
+                        <div style="margin-top:0.25rem; color:var(--text-secondary);">
+                            <strong>Marker Target:</strong> ${cand.marker} | <strong>Aligned Region:</strong> ${cand.alignmentLength} bp (${cand.matches} matches, ${cand.mismatches} mismatches, ${cand.gaps} gaps)
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // 2. Center Column: 3D Model
+        if (cand) {
+            const group = this.getOrganismGroup(cand);
+            const morphLabel = document.getElementById('id-3d-morph-label');
+            if (morphLabel) morphLabel.textContent = `Morphology: ${group.replace(/-/g, ' ')}`;
+
+            try {
+                if (!this.idOrganismViewer) {
+                    this.idOrganismViewer = new OrganismViewer('id-3d-canvas-container', { width: 440, height: 260, interactive: true });
+                    this.idOrganismViewer.init().then(() => {
+                        this.idOrganismViewer.showOrganism(group, cand.organism, true);
+                    }).catch(() => {
+                        this.idOrganismViewer.showOrganism(group, cand.organism, false);
+                    });
+                } else {
+                    this.idOrganismViewer.showOrganism(group, cand.organism, true);
+                }
+            } catch (e) {
+                console.warn('3D Organism preview error:', e);
+            }
+        }
+
+        // 3. Center Column: Pairwise Alignment Viewer
+        const alnMetrics = document.getElementById('id-alignment-metrics');
+        const alnViewer = document.getElementById('id-alignment-viewer');
+        if (alnMetrics && cand) {
+            alnMetrics.innerHTML = `
+                <span class="badge" style="background:var(--bg-tertiary);">ID: ${cand.identity}%</span>
+                <span class="badge" style="background:var(--bg-tertiary);">Cov: ${cand.coverage}%</span>
+                <span class="badge" style="background:var(--bg-tertiary);">Mismatches: ${cand.mismatches}</span>
+                <span class="badge" style="background:var(--bg-tertiary);">Gaps: ${cand.gaps}</span>
+            `;
+        }
+        if (alnViewer) {
+            if (cand && cand.alignment) {
+                const formatted = this.formatAlignmentBlock(
+                    cand.alignment.alignedQuery,
+                    cand.alignment.matchLine,
+                    cand.alignment.alignedRef,
+                    cand.alignment.queryStart,
+                    cand.alignment.refStart
+                );
+                alnViewer.textContent = formatted;
+            } else {
+                alnViewer.textContent = 'No alignment available.';
+            }
+        }
+
+        // 4. Right Column: Taxonomic Ladder
+        const taxContainer = document.getElementById('id-taxonomy-container');
+        if (taxContainer) {
+            if (cand && cand.taxonomy) {
+                const ranks = ['superkingdom', 'domain', 'kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species'];
+                const items = ranks.filter(r => cand.taxonomy[r]).map(r => `
+                    <div class="tax-item" style="display:flex; justify-content:space-between; padding:4px 8px; background:var(--bg-secondary); border-radius:var(--radius-sm); border:1px solid var(--border-color); font-size:0.85rem;">
+                        <span class="rank" style="color:var(--text-muted); font-size:0.75rem; text-transform:uppercase;">${r}</span>
+                        <span class="name" style="font-weight:600;"><em>${cand.taxonomy[r]}</em></span>
+                    </div>
+                `).join('');
+                taxContainer.innerHTML = items || '<p style="color:var(--text-muted); font-size:0.85rem;">Lineage data not available for this record.</p>';
+            } else {
+                taxContainer.innerHTML = '<p style="color:var(--text-muted); font-size:0.85rem;">Select a candidate to view taxonomic lineage.</p>';
+            }
+        }
+
+        // 5. Right Column: Scientific Confidence Card
+        const confBadge = document.getElementById('id-confidence-badge');
+        const confContainer = document.getElementById('id-confidence-container');
+        const conf = this.currentIdentificationResult?.confidence;
+        if (confBadge && conf) {
+            confBadge.textContent = conf.level;
+            confBadge.className = 'badge';
+            if (conf.level === 'HIGH') confBadge.style.background = 'var(--success)';
+            else if (conf.level === 'MODERATE') confBadge.style.background = 'var(--accent-primary)';
+            else if (conf.level === 'LOW') confBadge.style.background = 'var(--warning)';
+            else confBadge.style.background = 'var(--danger)';
+            confBadge.style.color = '#fff';
+        }
+        if (confContainer && conf) {
+            confContainer.innerHTML = `
+                <div style="font-size:0.85rem; line-height:1.5;">
+                    <div style="font-weight:600; margin-bottom:0.5rem; color:var(--text-primary);">${conf.title}</div>
+                    <ul style="padding-left:1.2rem; color:var(--text-secondary); margin:0;">
+                        ${conf.reasons.map(r => `<li style="margin-bottom:0.35rem;">${r}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        // 6. Right Column: Limitations & Confirmation
+        const limitContainer = document.getElementById('id-limitations-container');
+        if (limitContainer && conf) {
+            limitContainer.innerHTML = `
+                <ul style="padding-left:1.2rem; margin:0 0 0.75rem 0; font-size:0.82rem;">
+                    ${conf.limitations.map(l => `<li style="margin-bottom:0.35rem;">${l}</li>`).join('')}
+                </ul>
+                <div style="background:var(--bg-tertiary); padding:0.5rem 0.75rem; border-radius:var(--radius-sm); font-size:0.8rem;">
+                    <strong>Recommended Polyphasic Steps:</strong> Sanger bidirectional resequencing, MALDI-TOF MS, whole-genome ANI (threshold >=95-96%), and biochemical profiling.
+                </div>
+            `;
+        }
+    }
+
+    selectCandidate(idx) {
+        if (!this.currentIdentificationResult || !this.currentIdentificationResult.candidates[idx]) return;
+        this.selectedCandidateIndex = idx;
+        const cand = this.currentIdentificationResult.candidates[idx];
+        this.renderCandidateDetail(cand);
+
+        // Update active row highlighting
+        document.querySelectorAll('.id-candidates-table tr[data-cand-idx]').forEach(tr => {
+            const rowIdx = parseInt(tr.getAttribute('data-cand-idx'), 10);
+            if (rowIdx === idx) {
+                tr.classList.add('active-candidate');
+            } else {
+                tr.classList.remove('active-candidate');
+            }
+        });
+    }
+
+    buildPhylogenyFromReferences() {
+        if (!this.currentIdentificationResult || !this.currentIdentificationResult.candidates || this.currentIdentificationResult.candidates.length === 0) {
+            alert('Please run identification first to find candidate reference hits.');
+            return;
+        }
+
+        const container = document.getElementById('id-tree-container');
+        if (container) {
+            container.innerHTML = '<div style="padding:1.5rem; text-align:center; color:var(--text-muted);">Constructing pairwise distance matrix and clustering UPGMA tree...</div>';
+        }
+
+        try {
+            const queryName = (this.currentSequence.name || 'Query_Isolate').replace(/[\s(),:]+/g, '_');
+            const treeData = buildPhylogeneticTreeFromReferences(
+                queryName,
+                this.currentSequence.sequence,
+                this.currentIdentificationResult.candidates,
+                this.currentIdentificationResult.refs || []
+            );
+
+            const parsedTree = parseNewick(treeData.newick);
+            renderSVGTree('id-tree-container', parsedTree, treeData.queryName);
+        } catch (err) {
+            console.error('Tree building error:', err);
+            if (container) {
+                container.innerHTML = `<div style="padding:1.5rem; color:var(--danger); text-align:center;">Tree generation failed: ${err.message}</div>`;
+            }
+        }
+    }
+
+    addIdentificationToEvidence() {
+        if (!this.currentIdentificationResult || !this.currentIdentificationResult.topCandidate) {
+            alert('No identification result to add.');
+            return;
+        }
+        const top = this.currentIdentificationResult.topCandidate;
+        const conf = this.currentIdentificationResult.confidence;
+        this.evidenceEngine.addEvidence(
+            'TAXONOMIC_CONSISTENCY',
+            `Molecular ID: ${top.organism} (${top.identity}% ID)`,
+            top.marker,
+            conf.level === 'HIGH' ? 'STRONG' : (conf.level === 'MODERATE' ? 'MODERATE' : 'WEAK'),
+            `Aligned against GenBank/RefSeq reference ${top.accession} with ${top.identity}% identity and ${top.coverage}% query coverage.`,
+            conf.limitations.join('; ')
+        );
+        this.evidenceEngine.renderEvidenceBoard('evidence-board');
+        alert(`Added identification for "${top.organism}" to Evidence Board!`);
+    }
+
+    formatAlignmentBlock(alignedQuery, matchLine, alignedRef, qStart = 1, rStart = 1, blockSize = 60) {
+        if (!alignedQuery || !alignedRef) return 'No alignment data available.';
+        let out = '';
+        let currentQ = qStart;
+        let currentR = rStart;
+
+        for (let pos = 0; pos < alignedQuery.length; pos += blockSize) {
+            const qChunk = alignedQuery.substring(pos, pos + blockSize);
+            const mChunk = matchLine.substring(pos, pos + blockSize);
+            const rChunk = alignedRef.substring(pos, pos + blockSize);
+
+            const qNonGaps = (qChunk.match(/[^-]/g) || []).length;
+            const rNonGaps = (rChunk.match(/[^-]/g) || []).length;
+
+            const nextQ = qNonGaps > 0 ? (currentQ + qNonGaps - 1) : currentQ;
+            const nextR = rNonGaps > 0 ? (currentR + rNonGaps - 1) : currentR;
+
+            out += `Query  ${String(currentQ).padStart(5, ' ')}  ${qChunk}  ${nextQ}\n`;
+            out += `              ${mChunk}\n`;
+            out += `Sbjct  ${String(currentR).padStart(5, ' ')}  ${rChunk}  ${nextR}\n\n`;
+
+            currentQ += qNonGaps;
+            currentR += rNonGaps;
+        }
+        return out;
+    }
+
+    getOrganismGroup(cand) {
+        const org = (cand?.organism || '').toLowerCase();
+        const marker = (cand?.marker || '').toLowerCase();
+        if (org.includes('bacillus') || org.includes('staphylococcus') || org.includes('streptococcus') || org.includes('lactobacillus') || org.includes('mycobacterium')) {
+            return 'gram-positive';
+        }
+        if (marker.includes('archaea') || org.includes('methanocaldococcus') || org.includes('halobacterium') || org.includes('sulfolobus')) {
+            return 'bacterium';
+        }
+        if (org.includes('saccharomyces') || org.includes('candida') || org.includes('cryptococcus')) {
+            return 'yeast';
+        }
+        if (org.includes('aspergillus') || org.includes('penicillium')) {
+            return 'filamentous-fungus';
+        }
+        if (org.includes('tetrahymena') || org.includes('dictyostelium') || org.includes('paramecium')) {
+            return 'protozoan';
+        }
+        if (org.includes('chlamydomonas') || org.includes('chlorella')) {
+            return 'microalgae';
+        }
+        if (org.includes('phage') || org.includes('lambda') || org.includes('t4')) {
+            return 'bacteriophage';
+        }
+        if (org.includes('virus') || org.includes('sars') || org.includes('influenza') || org.includes('hiv')) {
+            return 'ssRNA-virus';
+        }
+        return 'gram-negative';
     }
 
     // 3D Organism & Taxonomy Viewer
@@ -1204,7 +1617,7 @@ ATGCGNATCRYTGWSKMBDHVNATCGATCG`;
         }
     }
 
-    async handleSequenceInput() {
+    async handleSequenceInput(autoNavigate = true) {
         const input = document.getElementById('main-sequence-input').value;
         if (!input.trim()) {
             alert('Please enter a sequence.');
@@ -1242,52 +1655,54 @@ ATGCGNATCRYTGWSKMBDHVNATCGATCG`;
             // Run Smart Router
             this.runSmartRouter();
             
-            if (validation.type === 'Protein') {
-                navigateTo('analyze-protein');
-                renderSequenceViewer('prot-sequence-viewer-container', primarySequence.sequence, { type: 'Protein' });
-                
-                const protStats = document.getElementById('prot-stats-container');
-                if (protStats && stats) {
-                    protStats.innerHTML = `
-                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
-                            <div class="card" style="margin:0; background:var(--bg-tertiary);">
-                                <strong>Length:</strong> ${stats.length} aa
-                            </div>
-                            <div class="card" style="margin:0; background:var(--bg-tertiary);">
-                                <strong>Hydrophobic:</strong> ${(stats.hydrophobicFraction * 100).toFixed(1)}%
-                            </div>
-                            <div class="card" style="margin:0; background:var(--bg-tertiary);">
-                                <strong>Est. MW:</strong> ${(stats.mwEstimateDa / 1000).toFixed(1)} kDa
-                            </div>
-                        </div>
-                    `;
-                }
-            } else {
-                navigateTo('analyze-nucleotide');
-                renderSequenceViewer('nuc-sequence-viewer-container', primarySequence.sequence, { type: validation.type });
-                
-                const nucStatsContainer = document.getElementById('nuc-stats-container');
-                if (nucStatsContainer && stats) {
-                    nucStatsContainer.innerHTML = `
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-                            <div class="chart-box card" style="margin:0;">
-                                <h3 style="font-size: 1rem; margin-bottom: 1rem;">Base Composition (GC: ${stats.gcPercentage.toFixed(1)}%)</h3>
-                                <div id="composition-chart"></div>
-                            </div>
-                            <div class="chart-box card" style="margin:0;">
-                                <h3 style="font-size: 1rem; margin-bottom: 1rem;">GC Profile (50bp window)</h3>
-                                <div id="gc-profile-chart"></div>
-                            </div>
-                        </div>
-                    `;
+            if (autoNavigate) {
+                if (validation.type === 'Protein') {
+                    navigateTo('analyze-protein');
+                    renderSequenceViewer('prot-sequence-viewer-container', primarySequence.sequence, { type: 'Protein' });
                     
-                    renderCompositionDonut('composition-chart', stats.counts);
-                    const gcProfile = calculateSlidingGC(primarySequence.sequence, 50, 10);
-                    renderGCProfileChart('gc-profile-chart', gcProfile);
-                }
+                    const protStats = document.getElementById('prot-stats-container');
+                    if (protStats && stats) {
+                        protStats.innerHTML = `
+                            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem;">
+                                <div class="card" style="margin:0; background:var(--bg-tertiary);">
+                                    <strong>Length:</strong> ${stats.length} aa
+                                </div>
+                                <div class="card" style="margin:0; background:var(--bg-tertiary);">
+                                    <strong>Hydrophobic:</strong> ${(stats.hydrophobicFraction * 100).toFixed(1)}%
+                                </div>
+                                <div class="card" style="margin:0; background:var(--bg-tertiary);">
+                                    <strong>Est. MW:</strong> ${(stats.mwEstimateDa / 1000).toFixed(1)} kDa
+                                </div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    navigateTo('analyze-nucleotide');
+                    renderSequenceViewer('nuc-sequence-viewer-container', primarySequence.sequence, { type: validation.type });
+                    
+                    const nucStatsContainer = document.getElementById('nuc-stats-container');
+                    if (nucStatsContainer && stats) {
+                        nucStatsContainer.innerHTML = `
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+                                <div class="chart-box card" style="margin:0;">
+                                    <h3 style="font-size: 1rem; margin-bottom: 1rem;">Base Composition (GC: ${stats.gcPercentage.toFixed(1)}%)</h3>
+                                    <div id="composition-chart"></div>
+                                </div>
+                                <div class="chart-box card" style="margin:0;">
+                                    <h3 style="font-size: 1rem; margin-bottom: 1rem;">GC Profile (50bp window)</h3>
+                                    <div id="gc-profile-chart"></div>
+                                </div>
+                            </div>
+                        `;
+                        
+                        renderCompositionDonut('composition-chart', stats.counts);
+                        const gcProfile = calculateSlidingGC(primarySequence.sequence, 50, 10);
+                        renderGCProfileChart('gc-profile-chart', gcProfile);
+                    }
 
-                const orfContainer = document.getElementById('orf-results-container');
-                if (orfContainer) orfContainer.innerHTML = '';
+                    const orfContainer = document.getElementById('orf-results-container');
+                    if (orfContainer) orfContainer.innerHTML = '';
+                }
             }
 
         } catch (error) {
@@ -1297,9 +1712,10 @@ ATGCGNATCRYTGWSKMBDHVNATCGATCG`;
     }
 
     async handleIdentifySequence() {
-        await this.handleSequenceInput();
+        await this.handleSequenceInput(false);
         if (!this.currentSequence) return;
         navigateTo('analyze-identify');
+        await this.runIdentificationPipeline();
     }
 
     async handleSaveCurrentSample() {
@@ -1794,6 +2210,14 @@ ATGCGNATCRYTGWSKMBDHVNATCGATCG`;
 }
 
 // Global initialization
-document.addEventListener('DOMContentLoaded', () => {
-    window.GeneTrace = new GeneTraceApp();
-});
+function initApp() {
+    if (!window.GeneTrace) {
+        window.GeneTrace = new GeneTraceApp();
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+} else {
+    initApp();
+}

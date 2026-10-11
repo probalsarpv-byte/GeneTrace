@@ -221,3 +221,61 @@
 [data-theme='dark'] .auth-card { background-color: var(--bg-secondary); }
 [data-theme='dark'] .plan-card { background-color: var(--bg-tertiary); }
 [data-theme='dark'] #chromatogram-canvas-container { background-color: #0f172a; }
+
+/* Flagship Identification Workspace */
+.identification-flagship {
+  display: grid;
+  grid-template-columns: 300px minmax(380px, 1fr) 320px;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 1280px) {
+  .identification-flagship {
+    grid-template-columns: 280px 1fr;
+  }
+  .id-col-right {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 860px) {
+  .identification-flagship {
+    grid-template-columns: 1fr;
+  }
+}
+
+.id-candidates-table tr {
+  cursor: pointer;
+  transition: background-color var(--duration-fast);
+}
+
+.id-candidates-table tr:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.id-candidates-table tr.active-candidate {
+  background-color: var(--accent-light);
+  border-left: 3px solid var(--accent-primary);
+  font-weight: 600;
+}
+
+.taxonomy-lineage-container .tax-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background-color: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+.taxonomy-lineage-container .tax-item .rank {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.taxonomy-lineage-container .tax-item .name {
+  font-weight: 500;
+}

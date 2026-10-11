@@ -1,0 +1,90 @@
+{
+  "marker": "16S rRNA",
+  "domain": "Bacteria",
+  "totalRecords": 8,
+  "chunks": [
+    "bacteria-16s-a.json"
+  ],
+  "records": [
+    {
+      "id": "ref-bac-16s-ecoli",
+      "accession": "NR_024570.1",
+      "organism": "Escherichia coli",
+      "scientificName": "Escherichia coli",
+      "genus": "Escherichia",
+      "species": "coli",
+      "sequenceLength": 1450,
+      "chunk": "bacteria-16s-a.json"
+    },
+    {
+      "id": "ref-bac-16s-bsubtilis",
+      "accession": "NR_102783.2",
+      "organism": "Bacillus subtilis",
+      "scientificName": "Bacillus subtilis subsp. subtilis",
+      "genus": "Bacillus",
+      "species": "subtilis",
+      "sequenceLength": 1550,
+      "chunk": "bacteria-16s-a.json"
+    },
+    {
+      "id": "ref-bac-16s-saureus",
+      "accession": "NR_118997.2",
+      "organism": "Staphylococcus aureus",
+      "scientificName": "Staphylococcus aureus subsp. aureus",
+      "genus": "Staphylococcus",
+      "species": "aureus",
+      "sequenceLength": 1552,
+      "chunk": "bacteria-16s-a.json"
+    },
+    {
+      "id": "ref-bac-16s-paeruginosa",
+      "accession": "NR_117678.1",
+      "organism": "Pseudomonas aeruginosa",
+      "scientificName": "Pseudomonas aeruginosa",
+      "genus": "Pseudomonas",
+      "species": "aeruginosa",
+      "sequenceLength": 1527,
+      "chunk": "bacteria-16s-a.json"
+    },
+    {
+      "id": "ref-bac-16s-senterica",
+      "accession": "NR_074910.1",
+      "organism": "Salmonella enterica",
+      "scientificName": "Salmonella enterica subsp. enterica serovar Typhimurium",
+      "genus": "Salmonella",
+      "species": "enterica",
+      "sequenceLength": 1544,
+      "chunk": "bacteria-16s-a.json"
+    },
+    {
+      "id": "ref-bac-16s-mtuberculosis",
+      "accession": "NR_102810.1",
+      "organism": "Mycobacterium tuberculosis",
+      "scientificName": "Mycobacterium tuberculosis",
+      "genus": "Mycobacterium",
+      "species": "tuberculosis",
+      "sequenceLength": 1537,
+      "chunk": "bacteria-16s-a.json"
+    },
+    {
+      "id": "ref-bac-16s-lacidophilus",
+      "accession": "NR_074987.1",
+      "organism": "Lactobacillus acidophilus",
+      "scientificName": "Lactobacillus acidophilus",
+      "genus": "Lactobacillus",
+      "species": "acidophilus",
+      "sequenceLength": 1553,
+      "chunk": "bacteria-16s-a.json"
+    },
+    {
+      "id": "ref-bac-16s-vcholerae",
+      "accession": "NR_074805.1",
+      "organism": "Vibrio cholerae",
+      "scientificName": "Vibrio cholerae O1 biovar El Tor",
+      "genus": "Vibrio",
+      "species": "cholerae",
+      "sequenceLength": 1534,
+      "chunk": "bacteria-16s-a.json"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "marker": "16S rRNA (Archaeal)",
+  "domain": "Archaea",
+  "totalRecords": 4,
+  "chunks": [
+    "archaea-16s-a.json"
+  ],
+  "records": [
+    {
+      "id": "ref-arc-16s-mjannaschii",
+      "accession": "NR_028169.1",
+      "organism": "Methanocaldococcus jannaschii",
+      "scientificName": "Methanocaldococcus jannaschii",
+      "genus": "Methanocaldococcus",
+      "species": "jannaschii",
+      "sequenceLength": 1433,
+      "chunk": "archaea-16s-a.json"
+    },
+    {
+      "id": "ref-arc-16s-hsalinarum",
+      "accession": "NR_074218.1",
+      "organism": "Halobacterium salinarum",
+      "scientificName": "Halobacterium salinarum",
+      "genus": "Halobacterium",
+      "species": "salinarum",
+      "sequenceLength": 1473,
+      "chunk": "archaea-16s-a.json"
+    },
+    {
+      "id": "ref-arc-16s-sacidocaldarius",
+      "accession": "NR_074272.1",
+      "organism": "Sulfolobus acidocaldarius",
+      "scientificName": "Sulfolobus acidocaldarius",
+      "genus": "Sulfolobus",
+      "species": "acidocaldarius",
+      "sequenceLength": 1481,
+      "chunk": "archaea-16s-a.json"
+    },
+    {
+      "id": "ref-arc-16s-mthermautotrophicus",
+      "accession": "NR_074230.1",
+      "organism": "Methanothermobacter thermautotrophicus",
+      "scientificName": "Methanothermobacter thermautotrophicus",
+      "genus": "Methanothermobacter",
+      "species": "thermautotrophicus",
+      "sequenceLength": 1475,
+      "chunk": "archaea-16s-a.json"
+    }
+  ]
+}

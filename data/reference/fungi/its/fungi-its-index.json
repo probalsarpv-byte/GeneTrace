@@ -1,0 +1,70 @@
+{
+  "marker": "ITS1-5.8S-ITS2",
+  "domain": "Eukaryota",
+  "totalRecords": 6,
+  "chunks": [
+    "fungi-its-a.json"
+  ],
+  "records": [
+    {
+      "id": "ref-fun-its-scerevisiae",
+      "accession": "NR_111007.1",
+      "organism": "Saccharomyces cerevisiae",
+      "scientificName": "Saccharomyces cerevisiae",
+      "genus": "Saccharomyces",
+      "species": "cerevisiae",
+      "sequenceLength": 752,
+      "chunk": "fungi-its-a.json"
+    },
+    {
+      "id": "ref-fun-its-calbicans",
+      "accession": "NR_125332.1",
+      "organism": "Candida albicans",
+      "scientificName": "Candida albicans",
+      "genus": "Candida",
+      "species": "albicans",
+      "sequenceLength": 495,
+      "chunk": "fungi-its-a.json"
+    },
+    {
+      "id": "ref-fun-its-ctropicalis",
+      "accession": "NR_130691.1",
+      "organism": "Candida tropicalis",
+      "scientificName": "Candida tropicalis",
+      "genus": "Candida",
+      "species": "tropicalis",
+      "sequenceLength": 707,
+      "chunk": "fungi-its-a.json"
+    },
+    {
+      "id": "ref-fun-its-aniger",
+      "accession": "NR_135338.1",
+      "organism": "Aspergillus niger",
+      "scientificName": "Aspergillus niger",
+      "genus": "Aspergillus",
+      "species": "niger",
+      "sequenceLength": 575,
+      "chunk": "fungi-its-a.json"
+    },
+    {
+      "id": "ref-fun-its-pchrysogenum",
+      "accession": "NR_121224.1",
+      "organism": "Penicillium chrysogenum",
+      "scientificName": "Penicillium chrysogenum",
+      "genus": "Penicillium",
+      "species": "chrysogenum",
+      "sequenceLength": 574,
+      "chunk": "fungi-its-a.json"
+    },
+    {
+      "id": "ref-fun-its-cneoformans",
+      "accession": "NR_121473.1",
+      "organism": "Cryptococcus neoformans",
+      "scientificName": "Cryptococcus neoformans var. grubii",
+      "genus": "Cryptococcus",
+      "species": "neoformans",
+      "sequenceLength": 613,
+      "chunk": "fungi-its-a.json"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "marker": "18S rRNA / Plastid",
+  "domain": "Eukaryota",
+  "totalRecords": 2,
+  "chunks": [
+    "algae-a.json"
+  ],
+  "records": [
+    {
+      "id": "ref-alg-18s-creinhardtii",
+      "accession": "NR_115668.1",
+      "organism": "Chlamydomonas reinhardtii",
+      "scientificName": "Chlamydomonas reinhardtii",
+      "genus": "Chlamydomonas",
+      "species": "reinhardtii",
+      "sequenceLength": 1485,
+      "chunk": "algae-a.json"
+    },
+    {
+      "id": "ref-alg-18s-cvulgaris",
+      "accession": "NR_044780.1",
+      "organism": "Chlorella vulgaris",
+      "scientificName": "Chlorella vulgaris",
+      "genus": "Chlorella",
+      "species": "vulgaris",
+      "sequenceLength": 1413,
+      "chunk": "algae-a.json"
+    }
+  ]
+}

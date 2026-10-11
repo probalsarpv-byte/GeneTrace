@@ -67,7 +67,12 @@ const ASSETS_TO_CACHE = [
     './js/ui/sequence-viewer.js',
     './js/ui/charts.js',
     './js/reports/report.js',
-    './js/external/blast.js'
+    './js/search/database-manager.js',
+    './js/search/reference-search.js',
+    './js/identification/confidence-engine.js',
+    './js/identification/demo-sequences.js',
+    './js/identification/archaea.js',
+    './js/phylogeny/tree-builder.js'
 ];
 
 self.addEventListener('install', event => {

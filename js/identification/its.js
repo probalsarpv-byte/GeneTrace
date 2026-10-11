@@ -1,83 +1,64 @@
+// js/identification/its.js
+// ITS Fungal Molecular Identification Pipeline
+import { searchReferences } from '../search/reference-search.js';
+import { evaluateConfidence } from './confidence-engine.js';
+
 export class ITSWorkflow {
-    constructor(analysisState) {
-        this.analysisState = analysisState;
+    constructor(dbManager) {
+        this.dbManager = dbManager;
     }
 
     assess(sequenceObj, stats) {
         const type = sequenceObj?.type || 'DNA';
         const length = sequenceObj?.sequence?.length || stats?.length || 0;
         const warnings = [];
-        let info = 'Sequence is suitable for ITS analysis.';
+        let suitabilityScore = 100;
         
         if (type !== 'DNA') {
-            warnings.push('ITS analysis is typically for DNA sequences.');
-            return { suitable: false, warnings, info: 'Incorrect sequence type.' };
+            warnings.push('ITS marker analysis requires a DNA sequence.');
+            return { suitable: false, suitabilityScore: 0, warnings, recommendation: 'Incorrect sequence type' };
         }
         
-        if (length < 200 || length > 900) {
-            warnings.push('Length is outside the recommended 200-900bp range for ITS amplicons.');
+        if (length < 200 || length > 1200) {
+            suitabilityScore -= 30;
+            warnings.push('Length is outside typical 200-1200 bp range for fungal ITS amplicons.');
         }
 
         return { 
-            suitable: true, 
+            suitable: suitabilityScore > 0, 
+            suitabilityScore,
             warnings, 
-            info 
+            recommendation: suitabilityScore >= 70 ? 'Proceed with fungal ITS identification' : 'Consider alternative workflow'
         };
     }
 
-    runExternalSearch(sequence) {
-        const state = { status: 'ready', database: 'ITS_RefSeq_Fungi', program: 'blastn' };
-        
+    async runSearch(sequenceObj, stats) {
+        const suitability = this.assess(sequenceObj, stats);
+        const refs = await this.dbManager.loadMarkerGroup('fungi-its');
+        const candidates = searchReferences(sequenceObj.sequence, refs);
+        const confidence = evaluateConfidence({
+            sequenceObj,
+            stats,
+            suitability,
+            candidates,
+            markerType: 'ITS1-5.8S-ITS2'
+        });
+
         return {
-            state,
-            copyFasta: () => sequence,
-            openNCBIBlast: () => 'https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch&DATABASE=ITS_RefSeq_Fungi',
-            openMycoBank: () => 'https://www.mycobank.org/',
-            statusOptions: ['not_run', 'external_service_opened', 'results_manual']
+            marker: 'ITS1-5.8S-ITS2',
+            domain: 'Fungi',
+            suitability,
+            candidates,
+            confidence,
+            topCandidate: candidates[0] || null
         };
     }
 
-    buildCandidates(manualInput) {
-        if (!manualInput) return [];
-        const lines = manualInput.trim().split('\n');
-        return lines.map(line => {
-            const [accession, organism, identity, coverage] = line.split('\t');
-            return { accession, organism, identity: parseFloat(identity), coverage: parseFloat(coverage) };
-        }).filter(c => c.accession && !isNaN(c.identity));
-    }
-
-    assessConfidence(candidates) {
-        if (!candidates || candidates.length === 0) {
-            return { level: 'INSUFFICIENT EVIDENCE', note: 'ITS species delimitation requires careful evaluation.' };
+    getOrganismGroupForVisualization(candidate) {
+        const name = candidate?.organism?.toLowerCase() || '';
+        if (name.includes('saccharomyces') || name.includes('candida') || name.includes('cryptococcus') || name.includes('schizosaccharomyces')) {
+            return 'yeast';
         }
-        const topCandidate = candidates[0];
-        if (topCandidate.identity >= 99.0 && topCandidate.coverage > 95) {
-            return { level: 'MODERATE', note: 'High identity alone does not confirm species. ITS species delimitation varies by fungal group.' };
-        } else if (topCandidate.identity >= 97.0) {
-            return { level: 'LOW', note: 'Genus-level identification supported. ITS species delimitation requires higher similarity or polyphasic data.' };
-        }
-        return { level: 'INSUFFICIENT EVIDENCE', note: 'Identity <97%. Insufficient evidence for genus or species identification.' };
-    }
-
-    getOrganismGroupForVisualization(topCandidate) {
-        const name = topCandidate?.organism?.toLowerCase() || '';
-        if (name.includes('saccharomyces') || name.includes('candida')) return 'yeast';
-        if (name.includes('aspergillus') || name.includes('penicillium')) return 'mold';
-        if (name.includes('agaricus') || name.includes('basidiomycota')) return 'basidiomycete';
-        if (name.includes('fungus')) return 'filamentous-fungus';
-        return 'unknown-fungus';
-    }
-
-    buildEvidence(assessResult, candidates, confidence) {
-        const evidence = [];
-        if (candidates.length > 0) {
-            evidence.push({
-                category: 'SIMILARITY_STRENGTH',
-                strength: confidence.level === 'MODERATE' ? 'MODERATE' : 'WEAK',
-                interpretation: `Top match: ${candidates[0].organism} (${candidates[0].identity}% id)`,
-                source: 'ITS BLAST'
-            });
-        }
-        return evidence;
+        return 'filamentous-fungus';
     }
 }

@@ -1,6 +1,6 @@
 // tree-viewer.js
 
-export function renderSVGTree(containerId, newickTree) {
+export function renderSVGTree(containerId, newickTree, highlightQueryName = null) {
     const container = document.getElementById(containerId);
     if (!container || !newickTree) return;
 
@@ -20,7 +20,7 @@ export function renderSVGTree(containerId, newickTree) {
     traverse(newickTree.children[0] || newickTree, 0); // skip phantom root if necessary
     
     const svgWidth = 800;
-    const svgHeight = Math.max(400, leafNodes.length * 30);
+    const svgHeight = Math.max(400, leafNodes.length * 36);
     const padding = 50;
     
     // Assign y coordinates to leaves
@@ -45,7 +45,7 @@ export function renderSVGTree(containerId, newickTree) {
     }
     computeCoords(newickTree.children[0] || newickTree);
     
-    const depthStep = (svgWidth - 150) / Math.max(1, maxDepth);
+    const depthStep = (svgWidth - 260) / Math.max(1, maxDepth);
     
     function assignX(node) {
         node.x = padding + (node.depth * depthStep);
@@ -75,7 +75,17 @@ export function renderSVGTree(containerId, newickTree) {
         }
         
         if (node.name) {
-            textHtml += `<text x="${node.x + 10}" y="${node.y + 5}" fill="var(--text-primary)" font-size="14" font-family="var(--font-sans)">${node.name}</text>`;
+            const isQuery = highlightQueryName && (
+                node.name.toLowerCase().includes(highlightQueryName.toLowerCase()) ||
+                highlightQueryName.toLowerCase().includes(node.name.toLowerCase()) ||
+                node.name.toLowerCase().includes('query')
+            );
+            if (isQuery) {
+                textHtml += `<rect x="${node.x + 6}" y="${node.y - 12}" width="280" height="22" rx="4" fill="rgba(37, 99, 235, 0.12)" stroke="var(--accent-primary, #2563eb)" stroke-width="1.5" />`;
+                textHtml += `<text x="${node.x + 12}" y="${node.y + 4}" fill="var(--accent-primary, #2563eb)" font-size="13" font-weight="700" font-family="var(--font-sans)">⭐ ${node.name} [Query Isolate]</text>`;
+            } else {
+                textHtml += `<text x="${node.x + 10}" y="${node.y + 5}" fill="var(--text-primary)" font-size="13" font-family="var(--font-sans)">${node.name}</text>`;
+            }
         }
     }
     

@@ -1,0 +1,40 @@
+{
+  "marker": "18S rRNA",
+  "domain": "Eukaryota",
+  "totalRecords": 3,
+  "chunks": [
+    "eukaryotes-18s-a.json"
+  ],
+  "records": [
+    {
+      "id": "ref-euk-18s-tthermophila",
+      "accession": "NR_044700.1",
+      "organism": "Tetrahymena thermophila",
+      "scientificName": "Tetrahymena thermophila",
+      "genus": "Tetrahymena",
+      "species": "thermophila",
+      "sequenceLength": 1512,
+      "chunk": "eukaryotes-18s-a.json"
+    },
+    {
+      "id": "ref-euk-18s-ddiscoideum",
+      "accession": "NR_074895.1",
+      "organism": "Dictyostelium discoideum",
+      "scientificName": "Dictyostelium discoideum",
+      "genus": "Dictyostelium",
+      "species": "discoideum",
+      "sequenceLength": 1542,
+      "chunk": "eukaryotes-18s-a.json"
+    },
+    {
+      "id": "ref-euk-18s-ptetraurelia",
+      "accession": "NR_044690.1",
+      "organism": "Paramecium tetraurelia",
+      "scientificName": "Paramecium tetraurelia",
+      "genus": "Paramecium",
+      "species": "tetraurelia",
+      "sequenceLength": 1475,
+      "chunk": "eukaryotes-18s-a.json"
+    }
+  ]
+}

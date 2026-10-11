@@ -1,0 +1,40 @@
+{
+  "marker": "Viral Genome / Diagnostic Region",
+  "domain": "Viruses",
+  "totalRecords": 3,
+  "chunks": [
+    "viruses-a.json"
+  ],
+  "records": [
+    {
+      "id": "ref-vir-sars2",
+      "accession": "NC_045512.2",
+      "organism": "Severe acute respiratory syndrome coronavirus 2",
+      "scientificName": "Severe acute respiratory syndrome coronavirus 2",
+      "genus": "Betacoronavirus",
+      "species": "Severe acute respiratory syndrome-related coronavirus",
+      "sequenceLength": 1438,
+      "chunk": "viruses-a.json"
+    },
+    {
+      "id": "ref-vir-flua",
+      "accession": "NC_002017.1",
+      "organism": "Influenza A virus",
+      "scientificName": "Influenza A virus (A/Puerto Rico/8/1934(H1N1)) segment 4",
+      "genus": "Alphainfluenzavirus",
+      "species": "Influenza A virus",
+      "sequenceLength": 1778,
+      "chunk": "viruses-a.json"
+    },
+    {
+      "id": "ref-vir-hiv1",
+      "accession": "NC_001802.1",
+      "organism": "Human immunodeficiency virus 1",
+      "scientificName": "Human immunodeficiency virus 1",
+      "genus": "Lentivirus",
+      "species": "Human immunodeficiency virus 1",
+      "sequenceLength": 1411,
+      "chunk": "viruses-a.json"
+    }
+  ]
+}

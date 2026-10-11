@@ -116,7 +116,9 @@ export class OrganismViewer {
         switch (type) {
             case 'bacterium':
             case 'gram-negative':
-                geometry = new THREE.CapsuleGeometry(1.5, 3, 16, 32);
+                geometry = (typeof THREE.CapsuleGeometry !== 'undefined') 
+                    ? new THREE.CapsuleGeometry(1.5, 3, 16, 32) 
+                    : new THREE.CylinderGeometry(1.5, 1.5, 3, 16);
                 break;
             case 'gram-positive':
             case 'yeast':

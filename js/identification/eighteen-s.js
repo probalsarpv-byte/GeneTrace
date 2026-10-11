@@ -1,82 +1,68 @@
+// js/identification/eighteen-s.js
+// 18S Eukaryotic & Microalgal Identification Pipeline
+import { searchReferences } from '../search/reference-search.js';
+import { evaluateConfidence } from './confidence-engine.js';
+
 export class EighteenSWorkflow {
-    constructor(analysisState) {
-        this.analysisState = analysisState;
+    constructor(dbManager) {
+        this.dbManager = dbManager;
     }
 
     assess(sequenceObj, stats) {
         const type = sequenceObj?.type || 'DNA';
         const length = sequenceObj?.sequence?.length || stats?.length || 0;
         const warnings = [];
-        let info = 'Sequence is suitable for 18S analysis (protozoa, microalgae, etc).';
+        let suitabilityScore = 100;
         
         if (type !== 'DNA') {
-            warnings.push('18S analysis is typically for DNA sequences.');
-            return { suitable: false, warnings, info: 'Incorrect sequence type.' };
+            warnings.push('18S analysis requires a DNA sequence.');
+            return { suitable: false, suitabilityScore: 0, warnings, recommendation: 'Incorrect sequence type' };
         }
         
-        if (length < 500 || length > 2000) {
-            warnings.push('Length is outside the typical 500-2000bp range for 18S amplicons.');
+        if (length < 300 || length > 2500) {
+            suitabilityScore -= 30;
+            warnings.push('Length is outside typical 300-2500 bp range for 18S amplicons.');
         }
 
         return { 
-            suitable: true, 
+            suitable: suitabilityScore > 0, 
+            suitabilityScore,
             warnings, 
-            info 
+            recommendation: suitabilityScore >= 70 ? 'Proceed with 18S eukaryotic identification' : 'Consider alternative workflow'
         };
     }
 
-    runExternalSearch(sequence) {
-        const state = { status: 'ready', database: '18S_ribosomal_RNA', program: 'blastn' };
-        
+    async runSearch(sequenceObj, stats) {
+        const suitability = this.assess(sequenceObj, stats);
+        // Load both microeukaryote and microalgal references
+        const eukRefs = await this.dbManager.loadMarkerGroup('eukaryotes-18s');
+        const algRefs = await this.dbManager.loadMarkerGroup('algae');
+        const allRefs = [...eukRefs, ...algRefs];
+
+        const candidates = searchReferences(sequenceObj.sequence, allRefs);
+        const confidence = evaluateConfidence({
+            sequenceObj,
+            stats,
+            suitability,
+            candidates,
+            markerType: '18S rRNA'
+        });
+
         return {
-            state,
-            copyFasta: () => sequence,
-            openNCBIBlast: () => 'https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch',
-            statusOptions: ['not_run', 'external_service_opened', 'results_manual']
+            marker: '18S rRNA',
+            domain: 'Eukaryota',
+            suitability,
+            candidates,
+            confidence,
+            topCandidate: candidates[0] || null
         };
     }
 
-    buildCandidates(manualInput) {
-        if (!manualInput) return [];
-        const lines = manualInput.trim().split('\n');
-        return lines.map(line => {
-            const [accession, organism, identity, coverage] = line.split('\t');
-            return { accession, organism, identity: parseFloat(identity), coverage: parseFloat(coverage) };
-        }).filter(c => c.accession && !isNaN(c.identity));
-    }
-
-    assessConfidence(candidates) {
-        if (!candidates || candidates.length === 0) {
-            return { level: 'INSUFFICIENT EVIDENCE', note: '18S sequence matching required.' };
+    getOrganismGroupForVisualization(candidate) {
+        const name = candidate?.organism?.toLowerCase() || '';
+        if (name.includes('chlamydomonas') || name.includes('chlorella') || name.includes('scenedesmus') || name.includes('volvox')) {
+            return 'protozoan'; // or microalga
         }
-        const topCandidate = candidates[0];
-        if (topCandidate.identity >= 99.0) {
-            return { level: 'MODERATE', note: '18S is less discriminating than ITS at species level for many groups. Genus or Family level may be more accurate.' };
-        } else if (topCandidate.identity >= 97.0) {
-            return { level: 'LOW', note: 'Family or Order level identification supported.' };
-        }
-        return { level: 'INSUFFICIENT EVIDENCE', note: 'Identity <97%. Insufficient evidence.' };
-    }
-
-    getOrganismGroupForVisualization(topCandidate) {
-        const name = topCandidate?.organism?.toLowerCase() || '';
-        if (name.includes('plasmodium') || name.includes('protozoa')) return 'protozoan';
-        if (name.includes('algae') || name.includes('chlorella')) return 'microalgae';
-        if (name.includes('amoeba')) return 'amoeba';
-        if (name.includes('paramecium')) return 'ciliate';
-        return 'unknown-eukaryote';
-    }
-
-    buildEvidence(assessResult, candidates, confidence) {
-        const evidence = [];
-        if (candidates.length > 0) {
-            evidence.push({
-                category: 'SIMILARITY_STRENGTH',
-                strength: confidence.level === 'MODERATE' ? 'MODERATE' : 'WEAK',
-                interpretation: `Top match: ${candidates[0].organism} (${candidates[0].identity}% id)`,
-                source: '18S BLAST'
-            });
-        }
-        return evidence;
+        return 'protozoan';
     }
 }

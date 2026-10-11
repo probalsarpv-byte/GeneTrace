@@ -1,6 +1,11 @@
+// js/identification/virus.js
+// Viral Sequence Investigation Pipeline
+import { searchReferences } from '../search/reference-search.js';
+import { evaluateConfidence } from './confidence-engine.js';
+
 export class VirusWorkflow {
-    constructor(analysisState) {
-        this.analysisState = analysisState;
+    constructor(dbManager) {
+        this.dbManager = dbManager;
     }
 
     assess(sequenceObj, stats) {
@@ -9,43 +14,47 @@ export class VirusWorkflow {
         const gcPercent = stats?.gcPercent || 50;
         
         return {
+            suitable: true,
+            suitabilityScore: 90,
             hasCodingPotential: true, 
             gcProfile: gcPercent > 60 ? 'high' : (gcPercent < 40 ? 'low' : 'normal'),
             lengthClass: length < 5000 ? 'short' : (length < 30000 ? 'medium' : 'long'),
-            notes: 'Viral identification relies on diverse markers or whole genomes, not a single conserved gene like 16S.'
+            warnings: [],
+            recommendation: 'Proceed with viral diagnostic screening'
         };
     }
-    
-    searchStrategy() {
-        return 'Viral sequence identification typically involves querying the full NCBI GenBank (nr/nt), ViPR (Virus Pathogen Database), or RVDB (Reference Viral DataBase).';
-    }
 
-    prepareSearch(sequence) {
+    async runSearch(sequenceObj, stats) {
+        const suitability = this.assess(sequenceObj, stats);
+        // Load both viral and bacteriophage reference sets
+        const virRefs = await this.dbManager.loadMarkerGroup('viruses');
+        const phaRefs = await this.dbManager.loadMarkerGroup('phages');
+        const allRefs = [...virRefs, ...phaRefs];
+
+        const candidates = searchReferences(sequenceObj.sequence, allRefs);
+        const confidence = evaluateConfidence({
+            sequenceObj,
+            stats,
+            suitability,
+            candidates,
+            markerType: 'Viral Diagnostic Region'
+        });
+
         return {
-            fasta: `>query\n${sequence}`,
-            openNCBIBlast: () => 'https://blast.ncbi.nlm.nih.gov/Blast.cgi?PROGRAM=blastn&PAGE_TYPE=BlastSearch',
-            openViPR: () => 'https://www.viprbrc.org/'
+            marker: 'Viral Diagnostic Region',
+            domain: 'Viruses',
+            suitability,
+            candidates,
+            confidence,
+            topCandidate: candidates[0] || null
         };
     }
 
-    assessConfidence(candidates) {
-        if (!candidates || candidates.length === 0) {
-            return { level: 'INSUFFICIENT', note: 'This tool is NOT for clinical diagnosis.' };
+    getOrganismGroupForVisualization(candidate) {
+        const name = candidate?.organism?.toLowerCase() || '';
+        if (name.includes('phage') || name.includes('lambda') || name.includes('t4') || name.includes('phix')) {
+            return 'bacteriophage';
         }
-        const topCandidate = candidates[0];
-        if (topCandidate.identity >= 95.0) {
-            return { level: 'MODERATE', note: 'Viral sequences are highly diverse; family-level placement suggested. This tool is NOT for clinical diagnosis.' };
-        } else {
-            return { level: 'LOW', note: 'Low similarity to known viral genomes. This tool is NOT for clinical diagnosis.' };
-        }
-    }
-
-    getViralGroupForVisualization(topCandidate) {
-        const name = topCandidate?.organism?.toLowerCase() || '';
-        if (name.includes('phage')) return 'bacteriophage';
-        if (name.includes('rna virus') || name.includes('coronavirus')) return 'ssRNA-virus';
-        if (name.includes('dna virus') || name.includes('herpes')) return 'dsDNA-virus';
-        if (name.includes('retro')) return 'retrovirus';
-        return 'unknown-virus';
+        return 'ssRNA-virus';
     }
 }

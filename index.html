@@ -57,10 +57,14 @@
 
                     <li class="nav-section-title">Identification</li>
                     <li data-view="analyze-identify" class="nav-item">
-                        <span class="icon">🧭</span> <span>Smart Router</span>
+                        <span class="icon">🧭</span> <span>Identification Hub</span>
                     </li>
                     <li data-view="id-16s" class="nav-item">
                         <span class="icon">🦠</span> <span>16S rRNA Bacterial</span>
+                        <span class="nav-badge pro">PRO</span>
+                    </li>
+                    <li data-view="id-archaea" class="nav-item">
+                        <span class="icon">🔥</span> <span>16S Archaeal</span>
                         <span class="nav-badge pro">PRO</span>
                     </li>
                     <li data-view="id-its" class="nav-item">
@@ -72,7 +76,7 @@
                         <span class="nav-badge pro">PRO</span>
                     </li>
                     <li data-view="id-virus" class="nav-item">
-                        <span class="icon">☣️</span> <span>Virus Sequence</span>
+                        <span class="icon">☣️</span> <span>Virus & Phage</span>
                         <span class="nav-badge pro">PRO</span>
                     </li>
                     <li data-view="id-unknown" class="nav-item">
@@ -187,7 +191,7 @@
                                 
                                 <div class="input-actions" style="margin-top:1rem; display:flex; gap:1rem; flex-wrap:wrap;">
                                     <button id="btn-analyze-sequence" class="btn primary large">ANALYZE SEQUENCE</button>
-                                    <button id="btn-identify-sequence" class="btn secondary large">SMART IDENTIFICATION</button>
+                                    <button id="btn-identify-sequence" class="btn secondary large">IDENTIFY MY SEQUENCE</button>
                                 </div>
                             </div>
                         </div>
@@ -252,9 +256,10 @@
                                     <span class="badge" style="background:#f1f5f9; color:#0f172a; font-weight:bold;">G (Black)</span>
                                     <span class="badge" style="background:#fee2e2; color:#991b1b; font-weight:bold;">T (Red)</span>
                                 </div>
-                                <div style="display:flex; gap:0.5rem;">
+                                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
                                     <button id="ab1-auto-trim" class="btn secondary small">⚡ Auto-Trim Poor Ends</button>
-                                    <button id="ab1-send-analysis" class="btn primary small">🚀 Send Trimmed to Analysis</button>
+                                    <button id="ab1-send-analysis" class="btn secondary small">🚀 Send to Nucleotide</button>
+                                    <button id="btn-ab1-identify" class="btn primary small">🧬 Identify Sanger Read in GeneTrace</button>
                                 </div>
                             </div>
 
@@ -295,10 +300,11 @@
                                         <label style="font-size:0.85rem; font-weight:600; display:block;">Min Read Length (bp):</label>
                                         <input type="number" id="fastq-min-len" value="50" min="20" max="500" class="input-text" style="width:90px;">
                                     </div>
-                                    <div style="display:flex; gap:0.5rem; align-items:flex-end;">
+                                    <div style="display:flex; gap:0.5rem; align-items:flex-end; flex-wrap:wrap;">
                                         <button id="fastq-filter-btn" class="btn primary">Apply Quality Filter</button>
                                         <button id="fastq-export-fasta" class="btn secondary">Export Filtered FASTA</button>
                                         <button id="fastq-use-first" class="btn secondary">Analyze Read #1</button>
+                                        <button id="btn-fastq-identify" class="btn primary">🧬 Identify Read #1</button>
                                     </div>
                                 </div>
                             </div>
@@ -321,50 +327,169 @@
                     </div>
                 </div>
 
-                <!-- Smart Router View -->
+                <!-- Identification Hub View (Flagship 3-Column Identification Workspace) -->
                 <div id="view-analyze-identify" class="view-section">
-                    <div class="card">
+                    <div class="card" style="margin-bottom:1.25rem;">
                         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
                             <div>
-                                <h2>🧭 Smart Workflow Router</h2>
-                                <p style="color:var(--text-secondary); margin-top:0.25rem;">Scientifically analyzes sequence length, GC composition, ORF density, and primer motifs to recommend the optimal molecular identification pathway.</p>
+                                <h2 style="display:flex; align-items:center; gap:0.5rem; margin:0;">
+                                    <span>🔬 GeneTrace Identification Hub</span>
+                                    <span class="badge badge-pro" style="font-size:0.75rem;">GENETRACE v1.1 FLAGSHIP</span>
+                                </h2>
+                                <p style="color:var(--text-secondary); margin-top:0.25rem; font-size:0.9rem;">
+                                    100% Client-Side Molecular Taxonomy & Reference Alignment. Sequences never leave your browser.
+                                </p>
                             </div>
-                            <button id="btn-router-reanalyze" class="btn secondary">Evaluate Active Sequence</button>
+                            <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                                <label style="font-size:0.85rem; font-weight:600; color:var(--text-secondary);">Target Marker:</label>
+                                <select id="id-marker-select" class="input-text" style="font-size:0.9rem; padding:0.4rem 0.8rem;">
+                                    <option value="auto">Auto-Detect (Smart Router)</option>
+                                    <option value="bacteria-16s">16S rRNA Bacterial (RefSeq)</option>
+                                    <option value="archaea-16s">16S rRNA Archaeal (RefSeq)</option>
+                                    <option value="fungi-its">ITS Fungal Barcode (ITS1/ITS2)</option>
+                                    <option value="eukaryotes-18s">18S rRNA Microeukaryote</option>
+                                    <option value="algae">Microalgae 18S / Plastid</option>
+                                    <option value="viruses">Viral Genome (RefSeq)</option>
+                                    <option value="phages">Bacteriophage Marker</option>
+                                </select>
+                                <button id="btn-run-identification" class="btn primary">🚀 Run Identification</button>
+                            </div>
                         </div>
 
-                        <div id="router-recommendation-container" style="margin-top:1.5rem;">
-                            <div style="padding:2rem; border:1px dashed var(--border-color); text-align:center; border-radius:var(--radius-lg);">
-                                <p style="color:var(--text-muted);">Please load an active sequence in the Home tab to receive tailored workflow recommendations.</p>
+                        <!-- Sequence banner / quick status -->
+                        <div id="id-active-seq-status" style="margin-top:1rem; padding:0.75rem 1rem; background:var(--bg-secondary); border-radius:var(--radius-md); border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem;">
+                            <div style="display:flex; align-items:center; gap:0.75rem; font-size:0.9rem; flex-wrap:wrap;">
+                                <span style="font-weight:600; color:var(--text-primary);" id="id-seq-name-display">Active Query: No sequence loaded</span>
+                                <span class="badge" id="id-seq-len-display" style="background:var(--bg-tertiary);">0 bp</span>
+                                <span class="badge" id="id-seq-gc-display" style="background:var(--bg-tertiary);">GC: --%</span>
+                                <span class="badge" id="id-seq-type-display" style="background:var(--bg-tertiary);">DNA</span>
+                            </div>
+                            <div id="id-engine-status" style="font-size:0.85rem; color:var(--text-muted); display:flex; align-items:center; gap:0.5rem;">
+                                <span class="status-dot green"></span> Reference Engine Ready (Local GenBank/RefSeq Curated DB)
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Flagship 3-Column Layout -->
+                    <div class="identification-flagship">
+                        <!-- LEFT COLUMN: Input Details & Candidate Matches -->
+                        <div class="id-col-left" style="display:flex; flex-direction:column; gap:1.25rem;">
+                            <div class="card" style="margin:0;">
+                                <h4>Query Sequence Profile</h4>
+                                <div id="id-query-profile-content" style="margin-top:0.75rem; font-size:0.85rem; color:var(--text-secondary); line-height:1.6;">
+                                    <p>Load an unknown sequence or Sanger read in Home or Raw Lab to begin identification against authentic reference sequences.</p>
+                                </div>
+                            </div>
+
+                            <div class="card" style="margin:0;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                                    <h4 style="margin:0;">Candidate Matches</h4>
+                                    <span id="id-candidate-count-badge" class="badge" style="background:var(--bg-tertiary); font-size:0.75rem;">0 hits</span>
+                                </div>
+                                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">
+                                    Click any candidate row to inspect its biological alignment, 3D model, and taxonomy.
+                                </p>
+                                <div id="id-candidates-container" style="overflow-x:auto; max-height:480px;">
+                                    <div style="padding:1.5rem; text-align:center; color:var(--text-muted); border:1px dashed var(--border-color); border-radius:var(--radius-md);">
+                                        No candidates yet. Click "Run Identification" above.
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div style="margin-top:2rem;">
-                            <h3>Available Molecular Identification Pipelines</h3>
-                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; margin-top:1rem;">
-                                <div class="card" style="margin:0; border:1px solid var(--border-color);">
-                                    <h4>🦠 16S rRNA Bacterial Pipeline</h4>
-                                    <p style="font-size:0.85rem; color:var(--text-secondary);">Gold standard for bacterial taxonomy. Evaluates amplicons against EzBioCloud 99% species / 98.7% genus thresholds and prepares SILVA/NCBI queries.</p>
-                                    <button class="btn primary small" data-view-target="id-16s" style="margin-top:0.5rem;">Open 16S Pipeline</button>
+                        <!-- CENTER COLUMN: Probable ID, 3D Organism, Pairwise Alignment, Phylogeny -->
+                        <div class="id-col-center" style="display:flex; flex-direction:column; gap:1.25rem;">
+                            <!-- Probable Identification Card -->
+                            <div class="card" id="id-probable-card" style="margin:0; border-top:4px solid var(--accent-primary);">
+                                <div id="id-probable-content">
+                                    <div style="padding:2rem; text-align:center; color:var(--text-muted);">
+                                        <p style="font-size:1.1rem; margin-bottom:0.5rem;">🧬 Awaiting Sequence Analysis</p>
+                                        <p style="font-size:0.9rem;">Run the identification engine to determine taxonomic assignment and top database match.</p>
+                                    </div>
                                 </div>
-                                <div class="card" style="margin:0; border:1px solid var(--border-color);">
-                                    <h4>🍄 ITS Fungal Identification</h4>
-                                    <p style="font-size:0.85rem; color:var(--text-secondary);">Primary fungal barcoding marker (ITS1-5.8S-ITS2). Prepares NCBI ITS RefSeq and MycoBank searches with conservative confidence assessment.</p>
-                                    <button class="btn primary small" data-view-target="id-its" style="margin-top:0.5rem;">Open ITS Pipeline</button>
+                            </div>
+
+                            <!-- Interactive 3D Model Viewport -->
+                            <div class="card" id="id-3d-card" style="margin:0;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                                    <h4 style="margin:0;">🌐 Interactive 3D Morphology Viewport</h4>
+                                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                                        <span class="badge" id="id-3d-morph-label" style="background:var(--accent-light); color:var(--accent-primary); font-size:0.75rem;">Morphology: Bacterial Cell</span>
+                                        <span style="font-size:0.75rem; color:var(--text-muted);">Drag to rotate 3D mesh</span>
+                                    </div>
                                 </div>
-                                <div class="card" style="margin:0; border:1px solid var(--border-color);">
-                                    <h4>🔬 18S Eukaryotic Pipeline</h4>
-                                    <p style="font-size:0.85rem; color:var(--text-secondary);">Taxonomic marker for microeukaryotes, protozoa, and microalgae. Connects to 18S RefSeq databases with genus-level resolution caveats.</p>
-                                    <button class="btn primary small" data-view-target="id-18s" style="margin-top:0.5rem;">Open 18S Pipeline</button>
+                                <div id="id-3d-canvas-container" style="height:260px; background:var(--bg-tertiary); border-radius:var(--radius-md); border:1px solid var(--border-color); display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;">
+                                    <span style="color:var(--text-muted); font-size:0.9rem;">3D Organism Preview</span>
                                 </div>
-                                <div class="card" style="margin:0; border:1px solid var(--border-color);">
-                                    <h4>☣️ Virus Sequence Analysis</h4>
-                                    <p style="font-size:0.85rem; color:var(--text-secondary);">Analyzes viral coding potential, GC profile, and prepares ViPR / GenBank searches with clear non-clinical educational disclaimers.</p>
-                                    <button class="btn primary small" data-view-target="id-virus" style="margin-top:0.5rem;">Open Virus Pipeline</button>
+                                <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem; margin-bottom:0;">
+                                    Scientific 3D morphological illustration representing verified cell envelope or capsid structure for the identified taxon.
+                                </p>
+                            </div>
+
+                            <!-- Pairwise Semi-Global Alignment Viewer -->
+                            <div class="card" id="id-alignment-card" style="margin:0;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                                    <div>
+                                        <h4 style="margin:0;">📏 Semi-Global Pairwise Alignment</h4>
+                                        <p style="font-size:0.8rem; color:var(--text-secondary); margin:0.25rem 0 0 0;">Dynamic programming alignment with biological 1-based coordinates and match line.</p>
+                                    </div>
+                                    <div id="id-alignment-metrics" style="display:flex; gap:0.5rem; font-size:0.8rem; flex-wrap:wrap;"></div>
                                 </div>
-                                <div class="card" style="margin:0; border:1px solid var(--border-color);">
-                                    <h4>❓ Unknown Sequence Pipeline</h4>
-                                    <p style="font-size:0.85rem; color:var(--text-secondary);">5-stage investigative diagnostic workflow that separates empirical observation from biological inference for fully uncharacterized sequences.</p>
-                                    <button class="btn primary small" data-view-target="id-unknown" style="margin-top:0.5rem;">Open Unknown Pipeline</button>
+                                <div id="id-alignment-viewer" style="background:var(--bg-primary); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:1rem; font-family:var(--font-mono); font-size:0.85rem; overflow-x:auto; white-space:pre; min-height:140px; color:var(--text-primary); line-height:1.4;">
+                                    <span style="color:var(--text-muted);">Alignment view will be rendered upon reference database search.</span>
+                                </div>
+                            </div>
+
+                            <!-- In-App Phylogenetic Placement -->
+                            <div class="card" id="id-phylogeny-card" style="margin:0;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                                    <div>
+                                        <h4 style="margin:0;">🌳 Phylogenetic Placement (UPGMA Tree)</h4>
+                                        <p style="font-size:0.8rem; color:var(--text-secondary); margin:0.25rem 0 0 0;">Constructs distance matrix and cladogram placing your query isolate alongside top references and outgroup.</p>
+                                    </div>
+                                    <button id="btn-id-build-tree" class="btn primary small">🌳 USE TOP REFERENCES FOR PHYLOGENY</button>
+                                </div>
+                                <div id="id-tree-container" style="min-height:180px; margin-top:0.5rem;">
+                                    <div style="padding:1.5rem; text-align:center; color:var(--text-muted); border:1px dashed var(--border-color); border-radius:var(--radius-md);">
+                                        Click "USE TOP REFERENCES FOR PHYLOGENY" to calculate pairwise distances and render the evolutionary tree.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- RIGHT COLUMN: Taxonomic Lineage, Confidence & Limitations -->
+                        <div class="id-col-right" style="display:flex; flex-direction:column; gap:1.25rem;">
+                            <!-- Full Authentic Taxonomic Lineage -->
+                            <div class="card" id="id-taxonomy-card" style="margin:0;">
+                                <h4>🏛️ Authentic Taxonomic Lineage</h4>
+                                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">NCBI / GenBank Curated Taxonomy Ladder</p>
+                                <div id="id-taxonomy-container" class="taxonomy-lineage-container" style="display:flex; flex-direction:column; gap:0.4rem;">
+                                    <div style="padding:1rem; text-align:center; color:var(--text-muted); font-size:0.85rem;">
+                                        Taxonomic hierarchy will display once an organism match is identified.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Scientific Confidence Assessment -->
+                            <div class="card" id="id-confidence-card" style="margin:0;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <h4 style="margin:0;">⚖️ Scientific Confidence</h4>
+                                    <span id="id-confidence-badge" class="badge" style="background:var(--bg-tertiary);">PENDING</span>
+                                </div>
+                                <div id="id-confidence-container" style="margin-top:0.75rem;">
+                                    <p style="font-size:0.85rem; color:var(--text-muted);">Evaluates sequence length, quality, marker suitability, identity thresholds, and taxonomic consistency.</p>
+                                </div>
+                            </div>
+
+                            <!-- Scientific Limitations & Confirmation Steps -->
+                            <div class="card" id="id-limitations-card" style="margin:0;">
+                                <h4>🔬 Limitations & Confirmation</h4>
+                                <div id="id-limitations-container" style="font-size:0.85rem; color:var(--text-secondary); line-height:1.5; margin-top:0.5rem;">
+                                    <p>Molecular barcoding provides preliminary bioinformatic screening. Definitive taxonomic identification requires polyphasic validation.</p>
+                                </div>
+                                <div style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+                                    <button id="btn-id-add-evidence" class="btn secondary small">📋 Add to Evidence Board</button>
+                                    <button id="btn-id-view-report" class="btn secondary small">📑 Generate Report</button>
                                 </div>
                             </div>
                         </div>
@@ -388,48 +513,46 @@
                         </div>
 
                         <div style="margin-top:1.5rem;">
-                            <h4>External Database Queries</h4>
-                            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">GeneTrace adheres to strict privacy: sequences never leave your browser unless you explicitly launch an external query.</p>
+                            <h4>GeneTrace Reference Database Search</h4>
+                            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">100% Client-side semi-global pairwise alignment against curated GenBank/RefSeq 16S type strains.</p>
                             <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-                                <button id="btn-16s-copy-fasta" class="btn secondary">📋 Copy FASTA to Clipboard</button>
-                                <button id="btn-16s-open-ncbi" class="btn primary">NCBI 16S BLASTn ↗</button>
-                                <a href="https://www.ezbiocloud.net/identify" target="_blank" rel="noopener" class="btn secondary">EzBioCloud 16S ↗</a>
-                                <a href="https://www.arb-silva.de/aligner/" target="_blank" rel="noopener" class="btn secondary">SILVA SINA Aligner ↗</a>
+                                <button id="btn-16s-run-search" class="btn primary">🧬 Run 16S Bacterial Identification</button>
+                                <button id="btn-16s-load-candidate-demo" class="btn secondary">Load E. coli RefSeq Demo</button>
+                                <button id="btn-16s-copy-fasta" class="btn secondary">📋 Copy FASTA</button>
                             </div>
                         </div>
 
-                        <div style="margin-top:2rem;">
-                            <h4>Candidate Evaluation & Polyphasic Verification</h4>
-                            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.75rem;">
-                                Enter BLAST/EzBioCloud top hit credentials below or load an example candidate to evaluate confidence.
-                            </p>
-                            <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
-                                <button id="btn-16s-load-candidate-demo" class="btn secondary small">Load E. coli Candidate Demo</button>
+                        <div id="sixteen-s-eval-result" style="margin-top:1.5rem;"></div>
+                    </div>
+                </div>
+
+                <!-- Archaeal 16S Identification View -->
+                <div id="view-id-archaea" class="view-section">
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
+                            <div>
+                                <h2>🔥 16S rRNA Archaeal Identification</h2>
+                                <p style="color:var(--text-secondary); margin-top:0.25rem;">Molecular taxonomy pipeline for methanogens, halophiles, and thermophilic Archaea.</p>
                             </div>
-                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1rem;">
-                                <div>
-                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Accession ID:</label>
-                                    <input type="text" id="input-16s-acc" placeholder="NR_024570.1" class="input-text" style="width:100%;">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Matched Organism:</label>
-                                    <input type="text" id="input-16s-org" placeholder="Escherichia coli strain K-12" class="input-text" style="width:100%;">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Percent Identity (%):</label>
-                                    <input type="number" id="input-16s-ident" placeholder="99.8" step="0.1" max="100" class="input-text" style="width:100%;">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Query Coverage (%):</label>
-                                    <input type="number" id="input-16s-cov" placeholder="100" step="0.1" max="100" class="input-text" style="width:100%;">
-                                </div>
-                            </div>
-                            <div style="display:flex; gap:0.75rem;">
-                                <button id="btn-16s-eval-candidate" class="btn primary">Assess Taxonomic Confidence</button>
-                                <button id="btn-16s-add-evidence" class="btn secondary">Add to Evidence Board</button>
-                            </div>
-                            <div id="sixteen-s-eval-result" style="margin-top:1.5rem;"></div>
+                            <span class="badge badge-pro">STUDENT PRO & RESEARCH</span>
                         </div>
+
+                        <div id="archaea-suitability" class="card" style="background:var(--bg-secondary); margin-top:1.5rem;">
+                            <h4>Archaeal Marker Suitability</h4>
+                            <p id="archaea-suitability-text" style="color:var(--text-muted); font-size:0.9rem;">Load a sequence to evaluate archaeal 16S suitability.</p>
+                        </div>
+
+                        <div style="margin-top:1.5rem;">
+                            <h4>GeneTrace Reference Database Search</h4>
+                            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">100% Client-side semi-global alignment against curated Archaeal 16S reference genomes.</p>
+                            <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                                <button id="btn-archaea-run-search" class="btn primary">🔥 Run Archaeal 16S Identification</button>
+                                <button id="btn-archaea-load-demo" class="btn secondary">Load M. jannaschii Demo</button>
+                                <button id="btn-archaea-copy-fasta" class="btn secondary">📋 Copy FASTA</button>
+                            </div>
+                        </div>
+
+                        <div id="archaea-eval-result" style="margin-top:1.5rem;"></div>
                     </div>
                 </div>
 
@@ -450,43 +573,16 @@
                         </div>
 
                         <div style="margin-top:1.5rem;">
-                            <h4>External Database Queries</h4>
+                            <h4>GeneTrace Reference Database Search</h4>
+                            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">Nuclear ribosomal ITS1-5.8S-ITS2 semi-global alignment against curated fungal RefSeq database.</p>
                             <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                                <button id="btn-its-run-search" class="btn primary">🍄 Run ITS Fungal Identification</button>
+                                <button id="btn-its-load-candidate-demo" class="btn secondary">Load S. cerevisiae Demo</button>
                                 <button id="btn-its-copy-fasta" class="btn secondary">📋 Copy FASTA</button>
-                                <button id="btn-its-open-ncbi" class="btn primary">NCBI ITS RefSeq Fungi BLAST ↗</button>
-                                <a href="https://www.mycobank.org/" target="_blank" rel="noopener" class="btn secondary">MycoBank Fungi Portal ↗</a>
                             </div>
                         </div>
 
-                        <div style="margin-top:2rem;">
-                            <h4>Candidate Evaluation & Species Delimitation</h4>
-                            <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
-                                <button id="btn-its-load-candidate-demo" class="btn secondary small">Load S. cerevisiae Demo</button>
-                            </div>
-                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1rem;">
-                                <div>
-                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Accession ID:</label>
-                                    <input type="text" id="input-its-acc" placeholder="NR_111007.1" class="input-text" style="width:100%;">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Fungal Organism:</label>
-                                    <input type="text" id="input-its-org" placeholder="Saccharomyces cerevisiae" class="input-text" style="width:100%;">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Identity (%):</label>
-                                    <input type="number" id="input-its-ident" placeholder="99.5" step="0.1" class="input-text" style="width:100%;">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Coverage (%):</label>
-                                    <input type="number" id="input-its-cov" placeholder="98.0" step="0.1" class="input-text" style="width:100%;">
-                                </div>
-                            </div>
-                            <div style="display:flex; gap:0.75rem;">
-                                <button id="btn-its-eval-candidate" class="btn primary">Assess Fungal Confidence</button>
-                                <button id="btn-its-add-evidence" class="btn secondary">Add to Evidence Board</button>
-                            </div>
-                            <div id="its-eval-result" style="margin-top:1.5rem;"></div>
-                        </div>
+                        <div id="its-eval-result" style="margin-top:1.5rem;"></div>
                     </div>
                 </div>
 
@@ -507,42 +603,16 @@
                         </div>
 
                         <div style="margin-top:1.5rem;">
-                            <h4>External Database Queries</h4>
+                            <h4>GeneTrace Reference Database Search</h4>
+                            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">Small subunit 18S rRNA alignment against curated eukaryotic RefSeq database.</p>
                             <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                                <button id="btn-18s-run-search" class="btn primary">🔬 Run 18S Eukaryotic Identification</button>
+                                <button id="btn-18s-load-demo" class="btn secondary">Load Tetrahymena Demo</button>
                                 <button id="btn-18s-copy-fasta" class="btn secondary">📋 Copy FASTA</button>
-                                <button id="btn-18s-open-ncbi" class="btn primary">NCBI 18S RefSeq BLAST ↗</button>
                             </div>
                         </div>
 
-                        <div style="margin-top:2rem;">
-                            <h4>Candidate Evaluation</h4>
-                            <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
-                                <button id="btn-18s-load-demo" class="btn secondary small">Load Tetrahymena Demo</button>
-                            </div>
-                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1rem;">
-                                <div>
-                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Accession ID:</label>
-                                    <input type="text" id="input-18s-acc" placeholder="NR_044700.1" class="input-text" style="width:100%;">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Matched Eukaryote:</label>
-                                    <input type="text" id="input-18s-org" placeholder="Tetrahymena thermophila" class="input-text" style="width:100%;">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Identity (%):</label>
-                                    <input type="number" id="input-18s-ident" placeholder="99.2" step="0.1" class="input-text" style="width:100%;">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Coverage (%):</label>
-                                    <input type="number" id="input-18s-cov" placeholder="97.5" step="0.1" class="input-text" style="width:100%;">
-                                </div>
-                            </div>
-                            <div style="display:flex; gap:0.75rem;">
-                                <button id="btn-18s-eval" class="btn primary">Assess 18S Confidence</button>
-                                <button id="btn-18s-add-evidence" class="btn secondary">Add to Evidence Board</button>
-                            </div>
-                            <div id="eighteen-s-eval-result" style="margin-top:1.5rem;"></div>
-                        </div>
+                        <div id="eighteen-s-eval-result" style="margin-top:1.5rem;"></div>
                     </div>
                 </div>
 
@@ -567,43 +637,16 @@
                         </div>
 
                         <div style="margin-top:1.5rem;">
-                            <h4>External Virus Databases</h4>
+                            <h4>GeneTrace Reference Database Search</h4>
+                            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">Viral and bacteriophage genomic alignment against curated viral RefSeq markers.</p>
                             <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                                <button id="btn-virus-run-search" class="btn primary">☣️ Run Viral & Phage Identification</button>
+                                <button id="btn-virus-load-demo" class="btn secondary">Load Phage Lambda Demo</button>
                                 <button id="btn-virus-copy-fasta" class="btn secondary">📋 Copy FASTA</button>
-                                <button id="btn-virus-open-ncbi" class="btn primary">NCBI BLASTn (nr/nt) ↗</button>
-                                <a href="https://www.viprbrc.org/" target="_blank" rel="noopener" class="btn secondary">ViPR Virus Portal ↗</a>
                             </div>
                         </div>
 
-                        <div style="margin-top:2rem;">
-                            <h4>Candidate Evaluation</h4>
-                            <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
-                                <button id="btn-virus-load-demo" class="btn secondary small">Load Bacteriophage Lambda Demo</button>
-                            </div>
-                            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1rem;">
-                                <div>
-                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Accession ID:</label>
-                                    <input type="text" id="input-virus-acc" placeholder="NC_001416.1" class="input-text" style="width:100%;">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Viral Agent / Phage:</label>
-                                    <input type="text" id="input-virus-org" placeholder="Enterobacteria phage lambda" class="input-text" style="width:100%;">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Identity (%):</label>
-                                    <input type="number" id="input-virus-ident" placeholder="96.5" step="0.1" class="input-text" style="width:100%;">
-                                </div>
-                                <div>
-                                    <label style="font-size:0.85rem; font-weight:600; display:block;">Coverage (%):</label>
-                                    <input type="number" id="input-virus-cov" placeholder="92.0" step="0.1" class="input-text" style="width:100%;">
-                                </div>
-                            </div>
-                            <div style="display:flex; gap:0.75rem;">
-                                <button id="btn-virus-eval" class="btn primary">Assess Viral Placement</button>
-                                <button id="btn-virus-add-evidence" class="btn secondary">Add to Evidence Board</button>
-                            </div>
-                            <div id="virus-eval-result" style="margin-top:1.5rem;"></div>
-                        </div>
+                        <div id="virus-eval-result" style="margin-top:1.5rem;"></div>
                     </div>
                 </div>
 
@@ -691,7 +734,7 @@
                             <button id="btn-reverse-complement" class="btn secondary">Reverse Complement</button>
                             <button id="btn-jump-translation" class="btn secondary">Translation (6-Frame)</button>
                             <button id="btn-jump-restriction" class="btn secondary">Restriction Digest</button>
-                            <button id="btn-nuc-blast" class="btn secondary">NCBI BLASTn ↗</button>
+                            <button id="btn-nuc-identify" class="btn primary">🔬 Identify in GeneTrace</button>
                         </div>
                         <div id="ncbi-blast-form-container-nuc"></div>
                         <div id="orf-results-container" style="margin-top: 2rem;"></div>
@@ -703,12 +746,12 @@
                     <div class="card">
                         <div style="display:flex; justify-content:space-between; align-items:center;">
                             <h2>Protein Analysis</h2>
-                            <button id="btn-save-sample-prot" class="btn secondary">💾 Save to Project</button>
+                            <button id="btn-save-sample-prot" class="btn secondary" title="Save this sequence to the active project">💾 Save to Project</button>
                         </div>
                         <div id="prot-stats-container"></div>
                         <div id="prot-sequence-viewer-container"></div>
                         <div class="input-actions" style="margin-top: 1rem;">
-                            <button id="btn-prot-blast" class="btn secondary">NCBI BLASTp ↗</button>
+                            <button id="btn-prot-identify" class="btn secondary">🔬 Explore in GeneTrace</button>
                         </div>
                         <div id="ncbi-blast-form-container-prot"></div>
                     </div>
@@ -1022,8 +1065,8 @@
                                 <p style="font-size:0.9rem; margin-bottom:0.25rem;"><strong>Version:</strong> GeneTrace v1.1.0 (Production Release)</p>
                                 <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem;"><em>"From Sequence to Biological Meaning"</em></p>
                                 <div style="background:var(--bg-tertiary); padding:0.75rem; border-radius:var(--radius-md); font-size:0.85rem; margin-bottom:1rem;">
-                                    <strong>🔒 Privacy & Telemetry Model:</strong><br>
-                                    All sequence computations, translation, ORF detection, and statistics execute 100% client-side in this browser. Zero sequence data or analytics are transmitted to any server. External queries (NCBI BLAST) occur only when you explicitly click external links.
+                                    <strong>🔒 Privacy & Architecture:</strong><br>
+                                    All sequence computations, pairwise reference alignments, taxonomic identification, and statistics execute 100% client-side in this browser against bundled curated reference databases. Zero sequence data is transmitted to any external server.
                                 </div>
                                 <div style="background:#fffbeb; border-left:4px solid #f59e0b; padding:0.75rem; border-radius:4px; font-size:0.8rem; color:#92400e; margin-bottom:1rem;">
                                     <strong>⚠️ Scientific Scope & Disclaimer:</strong><br>

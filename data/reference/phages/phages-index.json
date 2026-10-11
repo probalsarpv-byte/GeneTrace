@@ -1,0 +1,40 @@
+{
+  "marker": "Bacteriophage Diagnostic Region",
+  "domain": "Viruses",
+  "totalRecords": 3,
+  "chunks": [
+    "phages-a.json"
+  ],
+  "records": [
+    {
+      "id": "ref-pha-lambda",
+      "accession": "NC_001416.1",
+      "organism": "Enterobacteria phage lambda",
+      "scientificName": "Escherichia virus Lambda",
+      "genus": "Lambdavirus",
+      "species": "Escherichia virus Lambda",
+      "sequenceLength": 1501,
+      "chunk": "phages-a.json"
+    },
+    {
+      "id": "ref-pha-phix174",
+      "accession": "NC_001422.1",
+      "organism": "Enterobacteria phage phiX174",
+      "scientificName": "Escherichia virus phiX174",
+      "genus": "Sinsheimervirus",
+      "species": "Escherichia virus phiX174",
+      "sequenceLength": 1500,
+      "chunk": "phages-a.json"
+    },
+    {
+      "id": "ref-pha-t4",
+      "accession": "NC_000866.4",
+      "organism": "Enterobacteria phage T4",
+      "scientificName": "Escherichia virus T4",
+      "genus": "Tequatrovirus",
+      "species": "Escherichia virus T4",
+      "sequenceLength": 1501,
+      "chunk": "phages-a.json"
+    }
+  ]
+}
